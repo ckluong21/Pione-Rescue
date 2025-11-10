@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Tìm Ảnh</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f4f4f4;
+        }
+        #container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        input { 
+            width: 60%; 
+            padding: 10px; 
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px; 
+            margin-right: 5px;
+        }
+        button { 
+            padding: 10px 15px; 
+            font-size: 16px; 
+            cursor: pointer;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            vertical-align: top;
+        }
+        #search-btn {
+            background: #007bff;
+        }
+        /* Nút Tải về mới */
+        #download-btn {
+            background: #28a745; /* Màu xanh lá */
+            display: none; /* Ẩn ban đầu */
+        }
+        #result { 
+            margin-top: 20px; 
+            word-wrap: break-word; 
+            background: #eee;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        #preview {
+            max-width: 100%;
+            margin-top: 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <h2>Tool tìm link ảnh (https, jpg)</h2>
+        <input type="text" id="keyword-input" placeholder="Nhập từ khóa (ví dụ: tiger)">
+        
+        <button id="search-btn">Tìm ảnh</button>
+        <button id="download-btn">Tải về <i class="fas fa-download"></i></button> <div id="result">
+            <p>Link ảnh sẽ xuất hiện ở đây...</p>
+        </div>
+        
+        <img id="preview" src="" alt="Ảnh xem trước">
+    </div>
+
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+    <script>
+        // --------------- BƯỚC QUAN TRỌNG ---------------
+        const PEXELS_API_KEY = 'HwRL6eqU75mrNE6MzkiYHVvpeIoO4loPNZvN5Al6edDrj2AqZ2dIhIjp'; 
+        // ---------------------------------------------
+
+        const searchButton = document.getElementById('search-btn');
+        const downloadButton = document.getElementById('download-btn'); // Nút mới
+        const keywordInput = document.getElementById('keyword-input');
+        const resultDiv = document.getElementById('result');
+        const previewImg = document.getElementById('preview');
+
+        let currentImageUrl = null; // Biến lưu link ảnh để tải
+
+        /**
+         * Hàm này gọi API Pexels để tìm ảnh
+         * (Giữ nguyên hàm findImage)
+         */
+        async function findImage(keyword) {
+            if (!keyword) {
+                alert('Vui lòng nhập từ khóa');
+                return null;
+            }
+            const url = `https://api.pexels.com/v1/search?query=${keyword}&per_page=1`;
+            try {
+                const response = await fetch(url, {
+                    headers: { 'Authorization': PEXELS_API_KEY }
+                });
+                if (!response.ok) {
+                    // Xử lý lỗi API Key
+                    if (response.status === 401) {
+                        return 'Lỗi: API Key không hợp lệ. Vui lòng kiểm tra lại.';
+                    }
+                    throw new Error(`Lỗi API: ${response.statusText}`);
+                }
+                const data = await response.json();
+                if (data.photos && data.photos.length > 0) {
+                    const firstPhoto = data.photos[0];
+                    return firstPhoto.src.large; 
+                } else {
+                    return 'Không tìm thấy ảnh nào cho từ khóa này.';
+                }
+            } catch (error) {
+                console.error('Lỗi khi tìm ảnh:', error);
+                return `Đã xảy ra lỗi: ${error.message}`;
+            }
+        }
+
+        // --- Gắn sự kiện cho nút tìm kiếm (CẬP NHẬT) ---
+        searchButton.onclick = async function() {
+            const keyword = keywordInput.value;
+            resultDiv.textContent = 'Đang tìm kiếm...'; 
+            previewImg.src = '';
+            
+            // Ẩn nút tải về và reset link
+            downloadButton.style.display = 'none';
+            currentImageUrl = null;
+
+            const imageUrl = await findImage(keyword);
+
+            if (imageUrl && imageUrl.startsWith('https')) {
+                resultDiv.textContent = imageUrl; 
+                previewImg.src = imageUrl;
+                
+                // Lưu link và hiển thị nút tải về
+                currentImageUrl = imageUrl; 
+                downloadButton.style.display = 'inline-block'; // Hiển thị nút
+            } else {
+                resultDiv.textContent = imageUrl; // Hiển thị lỗi (nếu có)
+            }
+        };
+
+        // --- Gắn sự kiện cho nút Tải về (MỚI) ---
+        downloadButton.onclick = async function() {
+            if (!currentImageUrl) {
+                alert('Không có ảnh để tải.');
+                return;
+            }
+
+            // Đặt tên file dựa trên từ khóa
+            const keyword = keywordInput.value || 'download';
+            const filename = `${keyword.replace(/\s+/g, '-')}.jpg`;
+
+            resultDiv.textContent = 'Đang tải ảnh... 🚀';
+
+            try {
+                // 1. Fetch ảnh từ URL
+                const response = await fetch(currentImageUrl);
+                // 2. Chuyển đổi dữ liệu trả về thành Blob (dữ liệu thô)
+                const blob = await response.blob();
+                
+                // 3. Tạo một URL cục bộ (trên máy người dùng) cho Blob
+                const blobUrl = URL.createObjectURL(blob);
+                
+                // 4. Tạo một thẻ <a> (link) ảo
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = filename; // Thuộc tính 'download' báo trình duyệt tải về
+                
+                // 5. Thêm link vào trang, tự động click và xóa đi
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // 6. Dọn dẹp URL cục bộ đã tạo
+                URL.revokeObjectURL(blobUrl);
+                
+                resultDiv.textContent = currentImageUrl; // Phục hồi link
+                
+            } catch (err) {
+                console.error('Lỗi khi tải ảnh:', err);
+                resultDiv.textContent = 'Tải ảnh thất bại. 😔';
+            }
+        };
+
+        // Cho phép nhấn Enter để tìm
+        keywordInput.onkeydown = function(event) {
+            if (event.key === 'Enter') {
+                searchButton.onclick();
+            }
+        };
+
+    </script>
+</body>
+</html>

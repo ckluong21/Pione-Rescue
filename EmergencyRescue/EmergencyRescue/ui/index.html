@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pione Rescue Dashboard</title>
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tải Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Tải thư viện Lucide Icons -->
+    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
+    <!-- Tải Google Maps API - THAY KEY CỦA BẠN VÀO ĐÂY -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCVD0ef9f2TL5s2jV51sR0ceprOu4ItxT8&callback=initMap&libraries=routes" async defer></script>
+    
+    <style>
+        /* CSS cho thanh cuộn đẹp hơn */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #a8a8a8;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+        
+        /* CSS cho hiệu ứng nhấp nháy báo động */
+        @keyframes pulse-red {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+            }
+        }
+        .alarm-active {
+            animation: pulse-red 1.5s infinite;
+            border-color: #ef4444 !important;
+        }
+    </style>
+</head>
+<body class="h-full font-sans antialiased">
+    <div class="flex h-screen bg-gray-100">
+        <!-- Sidebar -->
+        <nav class="flex flex-col w-64 bg-gray-900 text-white shadow-lg">
+            <div class="flex items-center justify-center h-20 shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-red-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-4.9-3.3-8.8C13.8 2.3 12.3 1 12 1s-1.8 1.3-3.7 5.2C6 10.1 5 13 5 15a7 7 0 0 0 7 7z"/><path d="M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+                <h1 class="text-2xl font-bold">Pione Rescue</h1>
+            </div>
+            
+            <ul class="flex flex-col py-4">
+                <li>
+                    <a href="#home" class="nav-link active-link flex items-center h-12 px-6 text-gray-300 hover:bg-gray-700 hover:text-white" data-page="page-home">
+                        <i data-lucide="map" class="w-5 h-5 mr-3"></i>
+                        <span>Trang chủ (Bản đồ)</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#medical" class="nav-link flex items-center h-12 px-6 text-gray-300 hover:bg-gray-700 hover:text-white" data-page="page-medical">
+                        <i data-lucide="heart-pulse" class="w-5 h-5 mr-3"></i>
+                        <span>Hồ sơ y tế</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#funds" class="nav-link flex items-center h-12 px-6 text-gray-300 hover:bg-gray-700 hover:text-white" data-page="page-funds">
+                        <i data-lucide="piggy-bank" class="w-5 h-5 mr-3"></i>
+                        <span>Nạp quỹ</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="mt-auto p-6">
+                <button id="broadcast-signal-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition duration-200">
+                    <i data-lucide="siren" class="w-5 h-5 mr-2"></i>
+                    <span>Phát tín hiệu</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- Page: Home (Map) -->
+            <div id="page-home" class="page-content h-full relative">
+                <!-- Google Map container -->
+                <div id="map" class="w-full h-full"></div>
+                <!-- Thông báo modal -->
+                <div id="rescue-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white p-6 rounded-lg shadow-xl w-96">
+                        <h3 class="text-xl font-bold mb-4">Xác nhận cứu hộ?</h3>
+                        <p class="mb-6">Bạn có muốn nhận nhiệm vụ giải cứu cho sự kiện này không?</p>
+                        <div class="flex justify-end space-x-3">
+                            <button id="cancel-rescue-btn" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400">Hủy</button>
+                            <button id="confirm-rescue-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Xác nhận</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page: Medical History -->
+            <div id="page-medical" class="page-content h-full flex flex-col p-6 hidden overflow-hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Hồ sơ y tế & Giám sát sức khỏe</h2>
+                <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
+                    
+                    <!-- Left: Timeline -->
+                    <div class="flex flex-col bg-white rounded-lg shadow-lg overflow-hidden">
+                        <h3 class="text-xl font-semibold text-gray-700 p-4 border-b">Lộ trình điều trị</h3>
+                        <div id="timeline-container" class="flex-1 p-6 space-y-8 overflow-y-auto">
+                            <!-- Timeline items sẽ được chèn vào đây bởi JS -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Health Metrics -->
+                    <div class="flex flex-col bg-white rounded-lg shadow-lg overflow-hidden">
+                        <h3 class="text-xl font-semibold text-gray-700 p-4 border-b">Chỉ số sức khỏe (Thời gian thực)</h3>
+                        <div class="flex-1 p-6 overflow-y-auto">
+                            <!-- Status -->
+                            <div class="mb-4 p-4 rounded-lg bg-gray-100">
+                                <span class="text-sm font-medium text-gray-600">Trạng thái:</span>
+                                <span id="status-display" class="text-lg font-bold text-green-600">Tốt</span>
+                                <div id="status-timer" class="text-sm text-gray-500 mt-1"></div>
+                            </div>
+                            <!-- Grid Metrics -->
+                            <div class="flex flex-col gap-4">
+                                <!-- Heart Rate -->
+                                <div id="metric-heartrate" class="p-4 bg-white rounded-lg border-2 border-gray-200">
+                                    <div class="flex items-center text-gray-500 mb-1">
+                                        <i data-lucide="heart-pulse" class="w-4 h-4 mr-2"></i>
+                                        <span class="text-sm font-medium">Nhịp tim</span>
+                                    </div>
+                                    <div class="text-3xl font-bold text-red-500 mb-2">
+                                        <span id="heartrate-value">72</span> <span class="text-lg font-normal">bpm</span>
+                                    </div>
+                                    <canvas id="heartRateChart" style="height: 80px;"></canvas>
+                                </div>
+                                <!-- SpO2 -->
+                                <div id="metric-spo2" class="p-4 bg-white rounded-lg border-2 border-gray-200">
+                                    <div class="flex items-center text-gray-500 mb-1">
+                                        <i data-lucide="droplets" class="w-4 h-4 mr-2"></i>
+                                        <span class="text-sm font-medium">Oxy trong máu</span>
+                                    </div>
+                                    <div class="text-3xl font-bold text-blue-500 mb-2">
+                                        <span id="spo2-value">98</span> <span class="text-lg font-normal">%</span>
+                                    </div>
+                                    <canvas id="spo2Chart" style="height: 80px;"></canvas>
+                                </div>
+                                <!-- Temperature -->
+                                <div id="metric-temp" class="p-4 bg-white rounded-lg border-2 border-gray-200">
+                                    <div class="flex items-center text-gray-500 mb-1">
+                                        <i data-lucide="thermometer" class="w-4 h-4 mr-2"></i>
+                                        <span class="text-sm font-medium">Nhiệt độ</span>
+                                    </div>
+                                    <div class="text-3xl font-bold text-orange-500 mb-2">
+                                        <span id="temp-value">36.8</span> <span class="text-lg font-normal">°C</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-12">
+                                        <div id="temp-bar" class="bg-orange-500 h-2.5 rounded-full" style="width: 68%"></div>
+                                    </div>
+                                </div>
+                                <!-- Stress Level -->
+                                <div id="metric-stress" class="p-4 bg-white rounded-lg border-2 border-gray-200">
+                                    <div class="flex items-center text-gray-500 mb-1">
+                                        <i data-lucide="brain" class="w-4 h-4 mr-2"></i>
+                                        <span class="text-sm font-medium">Mức căng thẳng</span>
+                                    </div>
+                                    <div class="text-3xl font-bold text-purple-500 mb-2">
+                                        <span id="stress-value">30</span> <span class="text-lg font-normal">/ 100</span>
+                                    </div>
+                                    <canvas id="stressChart" style="height: 80px;"></canvas>
+                                </div>
+                                <!-- Steps -->
+                                <div id="metric-steps" class="p-4 bg-white rounded-lg border-2 border-gray-200">
+                                    <div class="flex items-center text-gray-500 mb-1">
+                                        <i data-lucide="footprints" class="w-4 h-4 mr-2"></i>
+                                        <span class="text-sm font-medium">Bước chân</span>
+                                    </div>
+                                    <div class="text-3xl font-bold text-green-600 mb-2">
+                                        <span id="steps-value">3450</span>
+                                    </div>
+                                    <div class="text-sm text-gray-500">Mục tiêu: 8000</div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-5">
+                                        <div id="steps-bar" class="bg-green-600 h-2.5 rounded-full" style="width: 43%"></div>
+                                    </div>
+                                </div>
+                                <!-- Sleep -->
+                                <div id="metric-sleep" class="p-4 bg-white rounded-lg border-2 border-gray-200">
+                                    <div class="flex items-center text-gray-500 mb-1">
+                                        <i data-lucide="bed" class="w-4 h-4 mr-2"></i>
+                                        <span class="text-sm font-medium">Giấc ngủ</span>
+                                    </div>
+                                    <div class="text-3xl font-bold text-indigo-500 mb-2">
+                                        <span id="sleep-value">7</span><span class="text-lg font-normal">h</span> 30<span class="text-lg font-normal">m</span>
+                                    </div>
+                                    <div class="text-sm text-gray-500">Chất lượng: Tốt</div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-5">
+                                        <div id="sleep-bar" class="bg-indigo-500 h-2.5 rounded-full" style="width: 94%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page: Deposit Funds -->
+            <div id="page-funds" class="page-content h-full flex flex-col p-6 hidden overflow-hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Quản lý quỹ cứu hộ</h2>
+                <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+                    
+                    <!-- Left: Deposit -->
+                    <div class="lg:col-span-1 bg-white rounded-lg shadow-lg p-6 flex flex-col items-center">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">Nạp quỹ (PZO)</h3>
+                        <p class="text-gray-500 text-center mb-2">Quét mã QR để nạp tiền vào quỹ của bạn.</p>
+                        <div class="p-4 bg-gray-100 rounded-lg">
+                            <!-- Placeholder cho QR code -->
+                            <img src="https://placehold.co/250x250/e2e8f0/333?text=QR+Code+Nap+Tien" alt="QR Code" class="rounded-lg">
+                        </div>
+                        <p class="text-sm text-gray-600 mt-4 text-center break-all"><b>Địa chỉ ví:</b> 0x123...abc</p>
+                        <div class="mt-6 w-full">
+                            <h4 class="font-semibold text-gray-700 mb-2">Số dư hiện tại:</h4>
+                            <div class="bg-blue-50 p-4 rounded-lg text-center">
+                                <span id="fund-balance" class="text-3xl font-bold text-blue-600">0.00 PZO</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: History -->
+                    <div class="lg:col-span-2 bg-white rounded-lg shadow-lg flex flex-col overflow-hidden">
+                        <h3 class="text-xl font-semibold text-gray-700 p-6 border-b">Lịch sử giao dịch</h3>
+                        <div class="flex-1 overflow-y-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thời gian</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền (PZO)</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="funds-history-table" class="bg-white divide-y divide-gray-200">
+                                    <!-- Dữ liệu giả sẽ được chèn vào đây -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- Globals ---
+        let map;
+        // let directionsService; // Đã xóa
+        // let directionsRenderer; // Đã xóa
+        let activeEventMarker = null; // Chỉ đánh dấu sự kiện đang xử lý
+        let infoWindow;
+        let currentRescuingEventId = null;
+        let activeRescueCount = 0;
+        const MAX_RESCUES = 7;
+
+        let charts = {};
+        let healthData = {
+            heartRate: [72],
+            spo2: [98],
+            stress: [30]
+        };
+        const DATA_POINTS = 20;
+
+        // Trạng thái sức khỏe
+        let healthState = 'good'; // 'good' hoặc 'anxious'
+        let stateTimer = 0;
+        const ANXIOUS_DURATION = 20; // 20 giây
+        const SIMULATION_INTERVAL = 2000; // 2 giây
+        const ANXIOUS_CHANCE_PER_MINUTE = 0.4; // 40% mỗi phút
+        const ANXIOUS_CHANCE_PER_TICK = (ANXIOUS_CHANCE_PER_MINUTE * SIMULATION_INTERVAL) / 60000;
+
+        // Ngưỡng báo động
+        const HEART_RATE_HIGH_ALARM = 140;
+        const HEART_RATE_LOW_ALARM = 45;
+        let isAlarmActive = false;
+
+        // --- Init Function ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Khởi tạo icons
+            if (window.lucide) {
+                lucide.createIcons();
+            } else {
+                console.warn("Lucide icons not loaded.");
+            }
+
+            // Xử lý navigation
+            setupNavigation();
+            
+            // Khởi tạo trang mặc định
+            showPage('page-home');
+
+            // Nút phát tín hiệu
+            document.getElementById('broadcast-signal-btn').addEventListener('click', () => {
+                console.log("Mô phỏng: Người dùng nhấn 'Phát tín hiệu'");
+                alert("Đã gửi tín hiệu khẩn cấp!"); // Sử dụng alert đơn giản cho mô phỏng
+                // Mô phỏng API 'createEmergencyEvent'
+                console.log("Mô phỏng API: createEmergencyEvent");
+                // Thêm 1 điểm đỏ ngẫu nhiên (mô phỏng tín hiệu của NGƯỜI KHÁC)
+                addEmergencyMarker(
+                    10.7769 + (Math.random() - 0.5) * 0.1, // Vị trí ngẫu nhiên quanh TPHCM
+                    106.7009 + (Math.random() - 0.5) * 0.1,
+                    `event-${Math.floor(Math.random() * 1000)}`
+                );
+            });
+
+            // Xử lý modal cứu hộ
+            document.getElementById('cancel-rescue-btn').addEventListener('click', () => {
+                document.getElementById('rescue-modal').classList.add('hidden');
+                currentRescuingEventId = null;
+            });
+            
+            document.getElementById('confirm-rescue-btn').addEventListener('click', confirmRescue);
+
+            // Tải dữ liệu cho các trang
+            loadMedicalHistory();
+            loadFundData();
+            
+            // Khởi tạo biểu đồ và mô phỏng
+            initCharts();
+            startDataSimulation();
+        });
+
+        // --- Navigation ---
+        function setupNavigation() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const pages = document.querySelectorAll('.page-content');
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const pageId = link.getAttribute('data-page');
+                    
+                    // Ẩn tất cả trang
+                    pages.forEach(page => page.classList.add('hidden'));
+                    
+                    // Hiện trang được chọn
+                    const activePage = document.getElementById(pageId);
+                    if (activePage) {
+                        activePage.classList.remove('hidden');
+                    }
+                    
+                    // Cập nhật trạng thái active
+                    navLinks.forEach(nav => nav.classList.remove('active-link', 'bg-gray-700'));
+                    link.classList.add('active-link', 'bg-gray-700');
+                    
+                    // Nếu là trang medical, đảm bảo chart render đúng
+                    if (pageId === 'page-medical') {
+                        Object.values(charts).forEach(chart => chart.resize());
+                    }
+                });
+            });
+        }
+        
+        function showPage(pageId) {
+             document.querySelectorAll('.page-content').forEach(page => page.classList.add('hidden'));
+             document.getElementById(pageId).classList.remove('hidden');
+             
+             document.querySelectorAll('.nav-link').forEach(nav => {
+                 nav.classList.remove('active-link', 'bg-gray-700');
+                 if(nav.getAttribute('data-page') === pageId) {
+                     nav.classList.add('active-link', 'bg-gray-700');
+                 }
+             });
+        }
+
+        // --- Google Maps Functions ---
+        function initMap() {
+            console.log("Google Maps API đã tải.");
+            try {
+                const centerOfWorld = { lat: 10.7769, lng: 106.7009 }; // Bắt đầu ở TPHCM, nhưng zoom out
+                
+                map = new google.maps.Map(document.getElementById("map"), {
+                    center: centerOfWorld,
+                    zoom: 3, // Zoom out toàn cảnh
+                    mapId: 'PIONE_RESCUE_MAP_ID', // Có thể cần 1 Map ID cho styling
+                    disableDefaultUI: true, // Ẩn tất cả UI
+                    mapTypeId: 'satellite' // Chế độ vệ tinh (trái đất)
+                });
+
+                // directionsService = new google.maps.DirectionsService(); // Đã xóa
+                // directionsRenderer = new google.maps.DirectionsRenderer(); // Đã xóa
+                // directionsRenderer.setMap(map); // Đã xóa
+                
+                infoWindow = new google.maps.InfoWindow();
+
+                console.log("Bản đồ đã khởi tạo.");
+
+            } catch (error) {
+                console.error("Lỗi khởi tạo Google Map:", error);
+                document.getElementById("map").innerHTML = `<div class="p-6 bg-red-100 text-red-700">Không thể tải bản đồ. Vui lòng kiểm tra API Key và kết nối.</div>`;
+            }
+        }
+
+        function addEmergencyMarker(lat, lng, eventId) {
+            if (!map) return;
+            
+            console.log(`Thêm tín hiệu khẩn cấp ${eventId} tại [${lat}, ${lng}]`);
+
+            const position = { lat, lng };
+            const marker = new google.maps.Marker({
+                position: position,
+                map: map,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: "#FF0000",
+                    fillOpacity: 1,
+                    strokeWeight: 2,
+                    strokeColor: "#FFFFFF"
+                },
+                animation: google.maps.Animation.BOUNCE,
+            });
+            
+            marker.addListener('click', () => {
+                onMarkerClick(marker, position, eventId);
+            });
+        }
+
+        function onMarkerClick(marker, position, eventId) {
+            map.panTo(position);
+            // Zoom chậm
+            let currentZoom = map.getZoom();
+            const targetZoom = 15;
+            const zoomInterval = setInterval(() => {
+                if (currentZoom < targetZoom) {
+                    currentZoom++;
+                    map.setZoom(currentZoom);
+                } else {
+                    clearInterval(zoomInterval);
+                    // Hiển thị lộ trình (mô phỏng) -> ĐÃ BỎ
+                    // showDirections(position); 
+                }
+            }, 300); // 300ms mỗi cấp độ zoom
+
+            // Hiển thị info window
+            const contentString = `
+                <div class="p-2 w-48">
+                    <h4 class="font-bold">Sự kiện: ${eventId}</h4>
+                    <p>Phát hiện tín hiệu khẩn cấp!</p>
+                    <button class="mt-2 w-full bg-red-600 text-white px-3 py-1 rounded-lg" onclick="promptRescue('${eventId}')">
+                        Nhận cứu hộ
+                    </button>
+                    <a href="https://maps.google.com?q=${position.lat},${position.lng}" target="_blank" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-center inline-block text-sm">
+                        Mở trên Google Maps
+                    </a>
+                </div>
+            `;
+            infoWindow.setContent(contentString);
+            infoWindow.open(map, marker);
+            
+            // Dừng animation
+            marker.setAnimation(null);
+            activeEventMarker = marker;
+        }
+        
+        // Cần hàm này ở global scope để 'onclick' trong InfoWindow gọi được
+        window.promptRescue = (eventId) => {
+            console.log(`Mở modal cứu hộ cho event: ${eventId}`);
+            currentRescuingEventId = eventId;
+            document.getElementById('rescue-modal').classList.remove('hidden');
+        }
+        
+        function confirmRescue() {
+            if (activeRescueCount >= MAX_RESCUES) {
+                alert(`Bạn đã đạt giới hạn tối đa ${MAX_RESCUES} nhiệm vụ cứu hộ. Vui lòng hoàn thành một nhiệm vụ trước khi nhận thêm.`);
+                document.getElementById('rescue-modal').classList.add('hidden'); // Đóng modal
+                return;
+            }
+
+            if (!currentRescuingEventId || !activeEventMarker) return;
+            
+            // 1. Tăng số lượng nhiệm vụ đang nhận
+            activeRescueCount++;
+            console.log(`Nhận nhiệm vụ. Số nhiệm vụ đang hoạt động: ${activeRescueCount}`);
+
+            // 2. Lưu lại marker và eventId để xử lý
+            const markerToProcess = activeEventMarker;
+            const eventId = currentRescuingEventId;
+
+            console.log(`Mô phỏng API: assignRescuer cho event: ${eventId}`);
+            console.log(`POST /api/event/assign - Payload: { "_eventId": ${eventId}, "_rescuerAddress": "0xMY_ADDRESS" }`);
+            
+            // 3. Đóng modal & info window
+            document.getElementById('rescue-modal').classList.add('hidden');
+            if (infoWindow) infoWindow.close();
+            
+            // 4. Cập nhật marker để hiển thị "đã nhận"
+            markerToProcess.setAnimation(null); // Dừng nhấp nháy
+            markerToProcess.setClickable(false); // Không cho click nữa
+            markerToProcess.setIcon({ // Đổi sang màu xám/mờ
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 8, // Nhỏ hơn 1 chút
+                fillColor: "#9CA3AF", // Màu xám
+                fillOpacity: 0.8,
+                strokeWeight: 1,
+                strokeColor: "#FFFFFF"
+            });
+            
+            // 5. Đặt hẹn giờ 1 phút (60000ms) để xóa marker
+            setTimeout(() => {
+                markerToProcess.setMap(null); // Xóa marker
+                activeRescueCount--; // Giảm số lượng nhiệm vụ
+                console.log(`Nhiệm vụ ${eventId} đã hoàn tất và bị xóa khỏi bản đồ. Nhiệm vụ hoạt động: ${activeRescueCount}`);
+            }, 60000); // 1 phút
+
+            // 6. Reset globals cho lần click marker tiếp theo
+            currentRescuingEventId = null;
+            activeEventMarker = null;
+
+            alert(`Đã xác nhận cứu hộ cho sự kiện ${eventId}! Marker sẽ chuyển màu và biến mất sau 1 phút.`);
+            
+            // Xóa logic cũ
+            // console.log(`...Mô phỏng: Bệnh nhân (hoặc hệ thống) sẽ confirmSuccessByPatient sau khi hoàn tất...`);
+            // console.log(`...Mô phỏng: Hệ thống gọi verifyAndExecutePayment để trả thưởng...`);
+        }
+
+        /* --- Đã xóa hàm showDirections ---
+        function showDirections(destination) {
+            // ...
+        }
+        */
+
+        // --- Medical History Page ---
+        function loadMedicalHistory() {
+            console.log("Mô phỏng API: getMedicalHistory");
+            // Dữ liệu giả
+            const fakeData = {
+                profile: { name: "Nguyễn Văn A", age: "30", conditions: "Tiểu đường Type 2" },
+                treatmentLogs: [
+                    { timestamp: "1731300157", location: "Bệnh viện Trung Ương", verifierName: "BS. Lê Văn B", details: "Tiêm Insulin 10ml, khám định kỳ." },
+                    { timestamp: "1730300157", location: "Phòng khám Đa khoa ABC", verifierName: "BS. Trần Thị C", details: "Đo đường huyết, tư vấn dinh dưỡng." },
+                    { timestamp: "1729300157", location: "Bệnh viện Chợ Rẫy", verifierName: "BS. Phạm Văn D", details: "Nhập viện do hạ đường huyết." },
+                    { timestamp: "1728300157", location: "Bệnh viện Trung Ương", verifierName: "BS. Lê Văn B", details: "Tái khám, điều chỉnh liều Insulin." }
+                ]
+            };
+            
+            renderMedicalTimeline(fakeData.treatmentLogs);
+        }
+
+        function renderMedicalTimeline(logs) {
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = ''; // Xóa nội dung cũ
+            
+            // Thêm 1 đường line ở giữa
+            const line = document.createElement('div');
+            line.className = 'absolute left-1/2 top-0 bottom-0 w-0.5 bg-red-200 transform -translate-x-1/2';
+            container.classList.add('relative');
+            container.appendChild(line);
+
+            logs.forEach((log, index) => {
+                const date = new Date(parseInt(log.timestamp) * 1000);
+                const isLeft = index % 2 === 0;
+                
+                const item = document.createElement('div');
+                item.className = `relative w-full flex ${isLeft ? 'justify-start' : 'justify-end'}`;
+                
+                item.innerHTML = `
+                    <!-- Timeline Card -->
+                    <div class="w-1/2 ${isLeft ? 'pr-8' : 'pl-8'}">
+                        <div class="bg-white p-4 rounded-lg border-2 border-red-100 shadow-md">
+                            <span class="text-sm font-semibold text-red-600">${date.toLocaleDateString('vi-VN')}</span>
+                            <h4 class="font-bold text-gray-800">${log.location}</h4>
+                            <p class="text-sm text-gray-600 mt-1">${log.details}</p>
+                            <p class="text-xs text-gray-400 mt-2">Xác nhận: ${log.verifierName}</p>
+                        </div>
+                    </div>
+                    <!-- Timeline Dot -->
+                    <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-red-500 rounded-full border-4 border-white transform -translate-x-1/2 -translate-y-1/2 z-10"></div>
+                `;
+                container.appendChild(item);
+            });
+        }
+        
+        // --- Health Metrics & Charts ---
+        function initCharts() {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { display: false },
+                    y: { display: true, beginAtZero: false }
+                },
+                plugins: { legend: { display: false } },
+                elements: {
+                    line: { tension: 0.3, borderWidth: 2 },
+                    point: { radius: 0 }
+                },
+                animation: { duration: 300 }
+            };
+
+            // Nhịp tim
+            charts.heartRate = new Chart(document.getElementById('heartRateChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: Array(DATA_POINTS).fill(''),
+                    datasets: [{
+                        label: 'Nhịp tim',
+                        data: healthData.heartRate,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true,
+                    }]
+                },
+                options: { ...commonOptions, scales: { y: { ...commonOptions.scales.y, min: 10, max: 50 } } }
+            });
+
+            // SpO2
+            charts.spo2 = new Chart(document.getElementById('spo2Chart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: Array(DATA_POINTS).fill(''),
+                    datasets: [{
+                        label: 'SpO2',
+                        data: healthData.spo2,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                    }]
+                },
+                options: { ...commonOptions, scales: { y: { ...commonOptions.scales.y, min: 90, max: 100 } } }
+            });
+
+            // Stress
+            charts.stress = new Chart(document.getElementById('stressChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: Array(DATA_POINTS).fill(''),
+                    datasets: [{
+                        label: 'Stress',
+                        data: healthData.stress,
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        fill: true,
+                    }]
+                },
+                options: { ...commonOptions, scales: { y: { ...commonOptions.scales.y, min: 0, max: 100 } } }
+            });
+        }
+        
+        function startDataSimulation() {
+            setInterval(() => {
+                updateHealthState();
+                const newData = generateFakeData();
+                updateHealthDisplays(newData);
+                updateHealthCharts(newData);
+                checkAlarms(newData);
+            }, SIMULATION_INTERVAL);
+        }
+        
+        function updateHealthState() {
+            const statusDisplay = document.getElementById('status-display');
+            const statusTimer = document.getElementById('status-timer');
+            
+            if (healthState === 'good') {
+                // Kiểm tra xem có chuyển sang 'anxious' không
+                if (Math.random() < ANXIOUS_CHANCE_PER_TICK) {
+                    healthState = 'anxious';
+                    stateTimer = ANXIOUS_DURATION;
+                    statusDisplay.textContent = 'Đang hồi hộp';
+                    statusDisplay.className = 'text-lg font-bold text-yellow-600';
+                } else {
+                    statusDisplay.textContent = 'Tốt';
+                    statusDisplay.className = 'text-lg font-bold text-green-600';
+                    statusTimer.textContent = '';
+                }
+            } else if (healthState === 'anxious') {
+                stateTimer -= (SIMULATION_INTERVAL / 1000);
+                if (stateTimer <= 0) {
+                    healthState = 'good';
+                    statusTimer.textContent = '';
+                } else {
+                    statusTimer.textContent = `Duy trì trong ${Math.ceil(stateTimer)} giây...`;
+                }
+            }
+        }
+        
+        function generateFakeData() {
+            let baseHeartRate, heartRateVariation;
+            let baseStress, stressVariation;
+            
+            if (healthState === 'anxious') {
+                // Khi hồi hộp, nhịp tim tăng, dao động mạnh
+                baseHeartRate = 105;
+                heartRateVariation = 15; // Dao động 90-120
+                baseStress = 65;
+                stressVariation = 10; // Dao động 55-75
+            } else {
+                // Trạng thái bình thường
+                baseHeartRate = 70;
+                heartRateVariation = 5; // Dao động 65-75
+                baseStress = 30;
+                stressVariation = 10; // Dao động 20-40
+            }
+            
+            // Nếu đang báo động, giữ ở mức cao/thấp
+            if (isAlarmActive) {
+                baseHeartRate = HEART_RATE_HIGH_ALARM + 5 + Math.random() * 5; // Giữ ở mức báo động cao
+            }
+
+            const newHeartRate = Math.floor(baseHeartRate + (Math.random() - 0.5) * heartRateVariation);
+            const newSpo2 = Math.min(99, Math.max(95, healthData.spo2[healthData.spo2.length - 1] + (Math.random() - 0.45)));
+            const newStress = Math.floor(baseStress + (Math.random() - 0.5) * stressVariation);
+            const newTemp = (36.5 + Math.random() * 0.5).toFixed(1);
+            const newSteps = parseInt(document.getElementById('steps-value').textContent) + Math.floor(Math.random() * 5);
+            
+            return { newHeartRate, newSpo2, newStress, newTemp, newSteps };
+        }
+        
+        function updateHealthDisplays(data) {
+            document.getElementById('heartrate-value').textContent = data.newHeartRate;
+            document.getElementById('spo2-value').textContent = Math.floor(data.newSpo2);
+            document.getElementById('stress-value').textContent = data.newStress;
+            document.getElementById('temp-value').textContent = data.newTemp;
+            document.getElementById('steps-value').textContent = data.newSteps;
+            
+            // Cập nhật thanh progress
+            document.getElementById('temp-bar').style.width = `${((data.newTemp - 35) / 5) * 100}%`; // Giả sử 35-40
+            document.getElementById('steps-bar').style.width = `${(data.newSteps / 8000) * 100}%`;
+        }
+        
+        function updateHealthCharts(data) {
+            const updateChartData = (chartData, newValue) => {
+                chartData.push(newValue);
+                if (chartData.length > DATA_POINTS) {
+                    chartData.shift();
+                }
+            };
+
+            updateChartData(healthData.heartRate, data.newHeartRate);
+            updateChartData(healthData.spo2, data.newSpo2);
+            updateChartData(healthData.stress, data.newStress);
+            
+            charts.heartRate.data.datasets[0].data = healthData.heartRate;
+            charts.spo2.data.datasets[0].data = healthData.spo2;
+            charts.stress.data.datasets[0].data = healthData.stress;
+            
+            charts.heartRate.update();
+            charts.spo2.update();
+            charts.stress.update();
+        }
+
+        function checkAlarms(data) {
+            const heartRateCard = document.getElementById('metric-heartrate');
+            
+            if (!isAlarmActive && (data.newHeartRate > HEART_RATE_HIGH_ALARM || data.newHeartRate < HEART_RATE_LOW_ALARM)) {
+                // KÍCH HOẠT BÁO ĐỘNG
+                isAlarmActive = true;
+                heartRateCard.classList.add('alarm-active');
+                
+                // Hiển thị trạng thái "Nguy hiểm"
+                const statusDisplay = document.getElementById('status-display');
+                statusDisplay.textContent = 'NGUY HIỂM!';
+                statusDisplay.className = 'text-lg font-bold text-red-600 animate-pulse';
+                document.getElementById('status-timer').textContent = 'Đang phát tín hiệu khẩn cấp...';
+                
+                // Mô phỏng gọi API createEmergencyEvent
+                console.error("!!! BÁO ĐỘNG !!! Nhịp tim bất thường:", data.newHeartRate);
+                console.log("Mô phỏng API: createEmergencyEvent");
+                console.log(`POST /api/event/create - Payload: { "_patientAddress": "0xPATIENT_ADDRESS", "_patientCccd": "0123456789", "_rewardAmount": "0.00000005" }`);
+
+                // Tạo 1 điểm đỏ trên bản đồ (mô phỏng cho chính mình thấy, nhưng thực tế là người khác sẽ thấy)
+                // Lấy vị trí ngẫu nhiên
+                const lat = 10.7769 + (Math.random() - 0.5) * 0.05;
+                const lng = 106.7009 + (Math.random() - 0.5) * 0.05;
+                addEmergencyMarker(lat, lng, `event-ALARM-${Math.floor(Math.random() * 100)}`);
+                
+            } else if (isAlarmActive && (data.newHeartRate < HEART_RATE_HIGH_ALARM && data.newHeartRate > HEART_RATE_LOW_ALARM)) {
+                // Tắt báo động (giả sử sau 1 thời gian)
+                // Trong thực tế, báo động chỉ tắt khi được giải cứu
+                // Tạm thời, ta để nó tự tắt nếu nhịp tim về bình thường
+                // isAlarmActive = false; 
+                // heartRateCard.classList.remove('alarm-active');
+                // (Để demo, ta sẽ để báo động kích hoạt và giữ nguyên)
+            }
+        }
+
+        // --- Funds Page ---
+        function loadFundData() {
+            // Mô phỏng viewFundBalance
+            console.log("Mô phỏng API: viewFundBalance");
+            const fakeBalance = { balanceEther: "1.25" };
+            document.getElementById('fund-balance').textContent = `${fakeBalance.balanceEther} PZO`;
+            
+            // Mô phỏng lịch sử
+            const historyContainer = document.getElementById('funds-history-table');
+            const fakeHistory = [
+                { time: "25/10/2025 09:30", type: "Nạp tiền", amount: "+ 1.00", status: "Hoàn thành" },
+                { time: "24/10/2025 15:10", type: "Thưởng cứu hộ", amount: "+ 0.05", status: "Hoàn thành" },
+                { time: "23/10/2025 08:00", type: "Tạo sự kiện", amount: "- 0.00005", status: "Đã sử dụng" },
+                { time: "22/10/2025 11:00", type: "Nạp tiền", amount: "+ 0.20", status: "Hoàn thành" }
+            ];
+            
+            historyContainer.innerHTML = '';
+            fakeHistory.forEach(item => {
+                const isDeposit = item.amount.startsWith('+');
+                historyContainer.innerHTML += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.time}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.type}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm ${isDeposit ? 'text-green-600' : 'text-red-600'} font-medium">${item.amount}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                item.status === 'Hoàn thành' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }">
+                                ${item.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+    </script>
+</body>
+</html>
+
+
+
+
