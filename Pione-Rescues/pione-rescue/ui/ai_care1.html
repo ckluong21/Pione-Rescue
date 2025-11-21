@@ -1,0 +1,456 @@
+<div id="ai-care-container" class="flex flex-col bg-gray-50 py-10 px-6">
+  <div class="max-w-5xl mx-auto w-full">
+    <h2 class="text-4xl font-bold text-center text-blue-700 mb-10">
+      AI Care - Nhận diện tình trạng thông qua ảnh
+    </h2>
+
+    <div class="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
+      <h3 class="text-xl font-semibold text-gray-700 mb-6 flex items-center gap-2">
+        <i class="bi bi-activity text-blue-500"></i>
+        Phân tích & Dự đoán
+      </h3>
+
+      <!-- Upload Button -->
+    <div class="mb-6 text-center">
+    <div class="d-flex justify-content-center gap-3 flex-wrap">
+        <!-- Nút Upload -->
+        <button
+        onclick="document.getElementById('image-upload').click()"
+        class="btn btn-lg text-white d-flex align-items-center gap-2 shadow-sm border-0 px-4 py-2"
+        style="background: linear-gradient(135deg, #4f46e5, #3b82f6); border-radius: 10px; transition: 0.3s;"
+        onmouseover="this.style.background='linear-gradient(135deg, #4338ca, #2563eb)'"
+        onmouseout="this.style.background='linear-gradient(135deg, #4f46e5, #3b82f6)'"
+        >
+        <i class="bi bi-upload fs-5"></i>
+        <span class="fw-semibold">Upload</span>
+        </button>
+
+        <!-- Nút Camera -->
+        <button
+        onclick="captureFromCamera()"
+        class="btn btn-lg text-white d-flex align-items-center gap-2 shadow-sm border-0 px-4 py-2"
+        style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 10px; transition: 0.3s;"
+        onmouseover="this.style.background='linear-gradient(135deg, #059669, #047857)'"
+        onmouseout="this.style.background='linear-gradient(135deg, #10b981, #059669)'"
+        >
+        <i class="bi bi-camera-fill fs-5"></i>
+        <span class="fw-semibold">Camera</span>
+        </button>
+    </div>
+
+    <input
+    type="file"
+    id="image-upload"
+    accept="image/*"
+    style="display: none"
+    onchange="handleImageUpload(event)"
+    >
+    </div>
+
+
+      <!-- Analysis Section -->
+      <div id="analysis-section" class="hidden">
+        <!-- Images Row -->
+        <div class="flex flex-col md:flex-row items-center justify-center gap-6 mb-8">
+          <div class="w-full md:w-1/2 text-center">
+            <img id="preview-image" class="w-full max-h-64 object-contain rounded-xl border border-gray-200 shadow" alt="Preview">
+            <p class="mt-2 text-gray-600 text-sm italic">Ảnh gốc</p>
+          </div>
+          <div class="w-full md:w-1/2 text-center">
+            <img id="result-image" class="w-full max-h-64 object-contain rounded-xl border border-gray-200 shadow hidden" alt="Result">
+            <p class="mt-2 text-gray-600 text-sm italic hidden" id="result-caption">Ảnh sau phân tích (AI)</p>
+          </div>
+        </div>
+
+        <!-- Loading Section -->
+        <div id="loading-animation" class="w-full text-center mb-6" style="display:none;">
+          <div class="w-3/4 mx-auto bg-gray-200 rounded-full h-4 overflow-hidden">
+            <div id="progress-bar" class="h-4 bg-gradient-to-r from-blue-400 to-indigo-500 transition-all duration-500 ease-out" style="width:0%;"></div>
+          </div>
+          <p id="loading-text" class="mt-3 text-blue-700 font-medium italic"></p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="hidden border-t pt-6 mt-4">
+          <h4 class="text-2xl font-semibold mb-4 text-gray-800">Kết quả phân tích</h4>
+          <div id="result-details" class="space-y-3 text-gray-700"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Container scroll */
+  #ai-care-container {
+    height: 100vh;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    background: linear-gradient(to bottom right, #f0f7ff, #ffffff);
+  }
+
+  /* Hover zoom for images */
+  #preview-image, #result-image {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  #preview-image:hover, #result-image:hover {
+    transform: scale(1.04);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+  }
+
+  /* Progress bar animation */
+  @keyframes progress-grow {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
+
+  /* Markdown typography */
+  .prose {
+    background-color: #f9fafb;
+    padding: 1rem 1.25rem;
+    border-radius: 0.75rem;
+    border-left: 4px solid #3b82f6;
+    box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.03);
+  }
+
+  .prose strong {
+    color: #1e3a8a;
+  }
+
+  /* Card section enhancement */
+  .analysis-card {
+    background: white;
+    border-radius: 1.5rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Gradient button */
+  .ai-btn {
+    background: linear-gradient(to right, #3b82f6, #6366f1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .ai-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+  }
+</style>
+<script id="ai-care-script">
+  const BASE_URL = "http://localhost:3004";
+  const WEBHOOK_STATUS_URL = "https://workflow.emg.edu.vn:5678/webhook/status";
+  const WEBHOOK_CHAT_URL = "https://workflow.emg.edu.vn:5678/webhook/sick";
+
+  const loadingMessages = [
+    "Đang tải ảnh lên...",
+    "Đang xử lý ảnh...",
+    "Đang áp dụng CNN...",
+    "Đang phân tích dữ liệu...",
+    "AI đang nhận diện tổn thương...",
+    "Đang tham vấn chuyên gia AI...", // Thêm bước này
+    "Đang tổng hợp lời khuyên..."
+  ];
+
+  // ==============================
+  // 🖼️ 1. Upload ảnh từ file
+  // ==============================
+  function handleImageUpload(event) {
+      if (event) {
+          event.preventDefault(); 
+          event.stopPropagation();
+      }
+      
+      try { 
+          const file = event.target.files[0];
+          if (!file) return;
+
+          showAnalysisUI();
+          previewImage(URL.createObjectURL(file));
+          startAnalysis(file);
+          
+          event.target.value = null; 
+      } catch (e) {
+          console.error("LỖI CRITICAL trong handleImageUpload:", e);
+          alert("Lỗi xử lý file, vui lòng kiểm tra console!");
+      }
+  }
+
+  // ==============================
+  // 📸 2. Chụp ảnh từ camera
+  // ==============================
+  async function captureFromCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.play();
+
+      const modal = document.createElement("div");
+      modal.className = "fixed inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-50";
+
+      modal.innerHTML = `
+        <video autoplay playsinline class="rounded-xl shadow-lg border-4 border-white w-[90%] max-w-md"></video>
+        <div class="mt-4 flex gap-4">
+          <button type="button" id="capture-btn" class="ai-btn text-white px-5 py-2 rounded-lg">📸 Chụp</button>
+          <button type="button" id="cancel-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-5 py-2 rounded-lg">Hủy</button>
+        </div>
+      `;
+      modal.querySelector("video").srcObject = stream;
+      document.body.appendChild(modal);
+
+      modal.querySelector("#cancel-btn").onclick = () => {
+        stream.getTracks().forEach(track => track.stop());
+        modal.remove();
+      };
+
+      modal.querySelector("#capture-btn").onclick = async () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
+        stream.getTracks().forEach(track => track.stop());
+
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
+        const file = new File([blob], "Captured.jpg", { type: "image/jpeg" });
+
+        modal.remove();
+        showAnalysisUI();
+        previewImage(URL.createObjectURL(file));
+        startAnalysis(file);
+      };
+    } catch (err) {
+      alert("Không thể truy cập camera. Vui lòng cấp quyền truy cập!");
+      console.error("Camera error:", err);
+    }
+  }
+
+  // ==============================
+  // ⚙️ 3. Xử lý hiển thị và loading
+  // ==============================
+  function showAnalysisUI() {
+    document.getElementById('analysis-section').classList.remove('hidden');
+    document.getElementById('results-section').classList.add('hidden');
+    document.getElementById('loading-animation').style.display = 'block';
+    
+    // Ẩn ảnh kết quả cũ khi bắt đầu cái mới
+    document.getElementById('result-image').classList.add('hidden');
+    document.getElementById('result-caption').classList.add('hidden');
+  }
+
+  function previewImage(src) {
+    const img = document.getElementById('preview-image');
+    img.src = src;
+  }
+
+  // ==============================
+  // 🧠 4. Gọi API phân tích ảnh (Logic chính sửa đổi ở đây)
+  // ==============================
+  async function startAnalysis(file) {
+    const loadingText = document.getElementById("loading-text");
+    const progressBar = document.getElementById("progress-bar");
+
+    // Reset UI kết quả
+    document.getElementById('results-section').classList.add('hidden');
+    progressBar.style.width = `10%`;
+    let progress = 10;
+
+    const formData = new FormData();
+    formData.append("file", file); 
+
+    // --- BƯỚC 1: Gọi API YOLO nhận diện ảnh ---
+    loadingText.textContent = "Đang gửi ảnh lên hệ thống AI...";
+    
+    let aiData = null;
+    try {
+        const res = await fetch(`${BASE_URL}/ai-care`, { 
+            method: "POST",
+            body: formData, 
+        });
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
+        aiData = await res.json();
+        
+        progress = 60;
+        progressBar.style.width = `${progress}%`;
+        loadingText.textContent = "Đã nhận diện xong. Đang phân tích chi tiết...";
+
+    } catch (error) {
+        console.error("Lỗi API /ai-care:", error);
+        aiData = {
+            ten_benh: "Lỗi kết nối",
+            loai_benh: "Error",
+            do_chinh_xac: 0,
+            mo_ta: "Không thể kết nối tới server nhận diện ảnh.",
+            khuyen_nghi: "Vui lòng thử lại sau.",
+            link_anh_api: "https://via.placeholder.com/300?text=Error"
+        };
+    }
+
+    // --- BƯỚC 2: Gọi Webhook lấy lời khuyên (Status) ---
+    // Chỉ gọi nếu bước 1 thành công và không phải lỗi
+    if (aiData.loai_benh !== "Error") {
+        try {
+            loadingText.textContent = "Đang xin ý kiến chuyên gia từ dữ liệu mô tả...";
+            
+            const statusRes = await fetch(WEBHOOK_STATUS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    tinh_trang: aiData.mo_ta // Input chỉ lấy mo_ta từ bước 1
+                })
+            });
+
+            const statusData = await statusRes.json();
+            
+            // Nếu có output từ webhook, GHI ĐÈ vào phần khuyến nghị
+            if (statusData.output) {
+                aiData.khuyen_nghi = statusData.output;
+            }
+
+        } catch (err) {
+            console.error("Lỗi gọi Webhook Status:", err);
+            // Nếu lỗi thì giữ nguyên khuyến nghị mặc định từ bước 1
+        }
+    }
+
+    // Hoàn thành loading
+    progressBar.style.width = `100%`;
+    loadingText.textContent = "Hoàn tất!";
+    await new Promise(r => setTimeout(r, 500)); // Chờ xíu cho đẹp
+
+    // Lấy link ảnh từ response
+    const resultImageUrl = aiData.link_anh_api; 
+
+    // Gọi hàm hiển thị
+    showResults(aiData, resultImageUrl); 
+ }
+
+  // ==============================
+  // 🧾 5. Hiển thị kết quả
+  // ==============================
+  function showResults(data, resultApiUrl) {
+    // Tắt loading
+    document.getElementById('loading-animation').style.display = 'none';
+    document.getElementById('results-section').classList.remove('hidden');
+
+    // Xử lý URL ảnh
+    const fullImageUrl = resultApiUrl + "?t=" + new Date().getTime();
+    const resultImage = document.getElementById('result-image');
+    resultImage.src = fullImageUrl;
+    
+    resultImage.onload = function() {
+        this.classList.remove('hidden');
+        document.getElementById('result-caption').classList.remove('hidden');
+    }
+    resultImage.onerror = function() {
+        this.src = "https://via.placeholder.com/400x300?text=Image+Not+Found";
+        this.classList.remove('hidden');
+    }
+
+    // Parse Markdown (Dùng thư viện marked nếu có, nếu không thì để nguyên text)
+    const moTaHTML = (typeof marked !== 'undefined') ? marked.parse(data.mo_ta || "") : data.mo_ta;
+    // Đây là phần khuyến nghị MỚI lấy từ Webhook Status
+    const khuyenNghiHTML = (typeof marked !== 'undefined') ? marked.parse(data.khuyen_nghi || "") : data.khuyen_nghi;
+
+    // Render Text
+    document.getElementById('result-details').innerHTML = `
+      <p class="text-lg"><strong>Tên bệnh:</strong> <span class="text-red-600">${data.ten_benh}</span></p>
+      <p><strong>Loại bệnh:</strong> ${data.loai_benh}</p>
+      <p><strong>Độ chính xác:</strong> ${Math.round(data.do_chinh_xac * 100)}%</p>
+
+      <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+        <p class="font-semibold text-blue-800">📝 Phân tích hình ảnh (YOLO):</p>
+        <div class="prose prose-blue max-w-none text-gray-700 mt-1 text-sm">${moTaHTML}</div>
+      </div>
+
+      <div class="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+        <p class="font-semibold text-green-800 flex items-center gap-2">
+            <i class="bi bi-lightbulb-fill"></i> Lời khuyên từ AI:
+        </p>
+        <div class="prose prose-green max-w-none text-gray-700 mt-2 text-sm">${khuyenNghiHTML}</div>
+      </div>
+    `;
+
+    // Cập nhật bong bóng chat
+    const tinhTrangText = `
+    Kết quả nhận diện: ${data.ten_benh} (${data.loai_benh}). 
+    Mô tả chi tiết: ${data.mo_ta.replace(/\*\*/g, '')}.
+    Lời khuyên hiện tại: ${data.khuyen_nghi.replace(/\*\*/g, '').substring(0, 100)}...
+    `.replace(/\n/g, ' ');
+
+    const existingBubble = document.getElementById("ai-chat-bubble");
+    if (existingBubble) {
+      existingBubble.onclick = () => openChatPopup(tinhTrangText);
+    } else {
+      createChatBubble(tinhTrangText);
+    }
+  }
+
+  // ==============================
+  // 💬 6. Chat Feature
+  // ==============================
+  function createChatBubble(tinhTrangText) {
+    if (document.getElementById("ai-chat-bubble")) return;
+    const bubble = document.createElement("div");
+    bubble.id = "ai-chat-bubble";
+    bubble.innerHTML = `<div class="fixed bottom-6 right-6 z-50"><div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-4 rounded-full shadow-lg cursor-pointer hover:scale-110 transition flex items-center justify-center"><i class="bi bi-chat-dots-fill fs-3"></i></div></div>`;
+    document.body.appendChild(bubble);
+    bubble.onclick = () => openChatPopup(tinhTrangText);
+  }
+
+  function openChatPopup(tinhTrangText) {
+    if (document.getElementById("ai-chat-popup")) return;
+    const popup = document.createElement("div");
+    popup.id = "ai-chat-popup";
+    popup.className = "fixed bottom-24 right-6 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 flex flex-col";
+    popup.innerHTML = `<div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-3 rounded-t-2xl flex justify-between items-center"><span class="font-semibold">AI Care Chat</span><button id="close-chat" class="text-white text-lg">&times;</button></div><div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3" style="max-height: 480px;"><div class="text-left"><div class="inline-block bg-gray-100 text-gray-700 px-3 py-2 rounded-xl mb-1">👋 Xin chào, tôi là <strong>AI Care</strong>. Tôi có thể giúp gì thêm về kết quả phân tích này?</div></div></div><div class="border-t flex items-center p-2"><input id="chat-input" type="text" placeholder="Nhập tin nhắn..." class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"><button id="send-chat" class="ml-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-3 py-2 text-sm">Gửi</button></div>`;
+    document.body.appendChild(popup);
+    document.getElementById("close-chat").onclick = () => popup.remove();
+    document.getElementById("send-chat").onclick = () => sendChatMessage(tinhTrangText);
+    document.getElementById("chat-input").addEventListener("keypress", (e) => { if (e.key === "Enter") sendChatMessage(tinhTrangText); });
+  }
+
+  async function sendChatMessage(tinhTrangText) {
+    const input = document.getElementById("chat-input");
+    const msg = input.value.trim();
+    if (!msg) return;
+    
+    const messagesDiv = document.getElementById("chat-messages");
+    const userMsg = document.createElement("div");
+    userMsg.className = "text-right";
+    userMsg.innerHTML = `<div class="inline-block bg-blue-100 text-blue-800 px-3 py-2 rounded-xl mb-1">${msg}</div>`;
+    messagesDiv.appendChild(userMsg);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    input.value = "";
+
+    const aiLoading = document.createElement("div");
+    aiLoading.className = "text-left text-gray-500 italic";
+    aiLoading.textContent = "AI Care đang trả lời...";
+    messagesDiv.appendChild(aiLoading);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    try {
+        const res = await fetch(WEBHOOK_CHAT_URL, { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify({ message: msg, tinh_trang: tinhTrangText }), 
+        });
+        const data = await res.json();
+        aiLoading.remove();
+
+        const aiMsg = document.createElement("div");
+        aiMsg.className = "text-left";
+        
+        const reply = data.output || data.reply || "AI không có phản hồi.";
+        const replyHTML = (typeof marked !== 'undefined') ? marked.parse(reply) : reply;
+
+        aiMsg.innerHTML = `<div class="inline-block bg-gray-100 text-gray-800 px-3 py-2 rounded-xl mb-1 prose prose-sm max-w-none">${replyHTML}</div>`;
+        messagesDiv.appendChild(aiMsg);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } catch (e) {
+        aiLoading.textContent = "❌ Lỗi khi gọi API Chat!";
+    }
+  }
+</script>

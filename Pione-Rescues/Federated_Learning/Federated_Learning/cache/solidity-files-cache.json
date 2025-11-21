@@ -1,0 +1,77 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "D:\\Working\\pione\\deploy_smart_contract\\Legacy-contract\\contracts\\achivement.sol": {
+      "lastModificationDate": 1761805982957,
+      "contentHash": "6b401859d9a92673b6b6d1768b82e06b",
+      "sourceName": "contracts/achivement.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "AchievementLedger_Minimal"
+      ]
+    },
+    "D:\\Working\\pione\\deploy_smart_contract\\Federated_Learning\\contracts\\VisionMateLedger.sol": {
+      "lastModificationDate": 1763115122828,
+      "contentHash": "a8e2e3b4964012102e9294d1a8b411d6",
+      "sourceName": "contracts/VisionMateLedger.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "VisionMateLedger"
+      ]
+    }
+  }
+}

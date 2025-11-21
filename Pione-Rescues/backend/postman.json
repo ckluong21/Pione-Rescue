@@ -1,0 +1,173 @@
+{
+	"info": {
+		"_postman_id": "b1a2c3d4-e5f6-7890-1234-56789abcdef0",
+		"name": "IoT & 3D Gen AI Backend",
+		"description": "Collection test các API cho hệ thống IoT và Image to 3D",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Health Check (Root)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2. Get IoT Data",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/getIoT?iot_id=DEVICE_TEST_01",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"getIoT"
+					],
+					"query": [
+						{
+							"key": "iot_id",
+							"value": "DEVICE_TEST_01",
+							"description": "Mã thiết bị IoT cần lấy dữ liệu"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3. AI Trigger Help (Alert)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"location\": \"Living Room\",\n    \"sensor_value\": 95,\n    \"emergency_code\": \"SOS_HIGH_TEMP\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/aitriggerhelp",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"aitriggerhelp"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4. Image to 3D Workflow (Upload)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "cccd",
+							"value": "079123456789",
+							"type": "text",
+							"description": "Số căn cước công dân"
+						},
+						{
+							"key": "wallet_address",
+							"value": "0x123abc_wallet_address",
+							"type": "text",
+							"description": "Địa chỉ ví"
+						},
+						{
+							"key": "file",
+							"type": "file",
+							"description": "Chọn file ảnh từ máy tính để upload"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/imageto3d",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"imageto3d"
+					]
+				},
+				"description": "API này thực hiện quy trình: Upload ảnh -> YOLO -> GenAI Markdown -> Gọi 3D API -> Lưu GLB -> Lưu DB"
+			},
+			"response": []
+		},
+		{
+			"name": "5. Get User Models List",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"cccd\": \"079123456789\",\n    \"wallet_address\": \"0x123abc_wallet_address\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/user/models",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"user",
+						"models"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3003",
+			"type": "string"
+		}
+	]
+}

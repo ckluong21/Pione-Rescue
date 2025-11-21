@@ -1,0 +1,336 @@
+<style>
+    /* Đây là container "giả" body, dùng để nhúng vào trang khác.
+    */
+    #ai-care-wrapper {
+        background-color: #f9fafb; /* Màu nền (bg-gray-50) */
+        padding: 2rem; 
+        border-radius: 0.5rem; /* bo góc nhẹ */
+    }
+
+    /* Áp dụng background grid với hiệu ứng 3D nhẹ
+       cho khu vực xem mô hình 3D
+    */
+    model-viewer {
+        background-color: #ffffff; 
+        background-image: 
+            linear-gradient(to right, rgba(0, 0, 0, 0.08) 1px, transparent 1px), 
+            linear-gradient(to bottom, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+            linear-gradient(to right, rgba(0, 0, 0, 0.02) 0%, transparent 1%),
+            linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 0%, transparent 1%);
+        
+        background-size: 2rem 2rem, 2rem 2rem, 1rem 1rem, 1rem 1rem; 
+        background-position: 0 0, 0 0, 0.5rem 0.5rem, 0.5rem 0.5rem;
+        
+        box-shadow: inset 0px 0px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Tạo một khu vực cuộn CHỈ cho phần lịch sử
+    */
+    #history-content {
+        max-height: 600px; /* Chiều cao tối đa của vùng cuộn */
+        overflow-y: auto;  /* Bật cuộn dọc khi nội dung dài hơn */
+        padding-right: 0.5rem; /* Tránh thanh cuộn đè nội dung */
+        padding-bottom: 200px; 
+    }
+</style>
+
+<div id="ai-care-wrapper">
+
+    <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-xl">
+
+        <div class="mb-8 border-b pb-8">
+
+            <button id="upload-button" class="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-700 transition-all duration-300">
+                Tải ảnh lên để xử lý
+            </button>
+            
+            <input type="file" id="image-upload" style="display: none;" accept="image/*">
+            <div id="status-container" class="mt-4 w-full max-w-md" style="display: none;">
+                <p id="status-message" class="font-medium mb-2">Đang xử lý, vui lòng chờ...</p>
+                <div class="w-full bg-gray-200 rounded-full h-4">
+                    <div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-150" style="width: 0%"></div>
+                </div>
+                <p id="error-message" class="text-red-600 font-bold mt-3" style="display: none;"></p>
+            </div>
+
+        </div>
+
+        <div>
+            <h2 class="text-3xl font-bold text-gray-800 mb-5">
+                Lịch sử Phân tích
+            </h2>
+            
+            <div id="history-content">
+                <p id="loading-message" class="text-gray-500 italic">Đang tải lịch sử phân tích...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script id="ai-3d-script">
+    (function() {
+        // --- 1. CẤU HÌNH ---
+        const BACKEND_URL = "http://localhost:3004"; 
+        const AI_CARE_ENDPOINT = `${BACKEND_URL}/imageto3d`;
+        const USER_MODELS_ENDPOINT = `${BACKEND_URL}/user/models`;
+
+        // --- 2. HÀM LẤY DỮ LIỆU NGƯỜI DÙNG (Đảm bảo không bao giờ Null) ---
+        function getUserInfo() {
+            let cccd = localStorage.getItem('cccd');
+            let wallet = localStorage.getItem('walletAddress');
+
+            // Nếu null, undefined hoặc chuỗi "null", gán giá trị mặc định
+            if (!cccd || cccd === 'null' || cccd === 'undefined') {
+                cccd = "0123456789"; 
+            }
+            if (!wallet || wallet === 'null' || wallet === 'undefined') {
+                wallet = "0x41DBDD4C90bFDFedDb077282Dbf0fB6755FBdbb9";
+            }
+            
+            return { cccd, wallet };
+        }
+
+        // --- 3. DOM ELEMENTS ---
+        const elements = {
+            uploadBtn: document.getElementById('upload-button'),
+            fileInput: document.getElementById('image-upload'),
+            statusContainer: document.getElementById('status-container'),
+            progressBar: document.getElementById('progress-bar'),
+            statusMsg: document.getElementById('status-message'),
+            errorMsg: document.getElementById('error-message'),
+            historyContent: document.getElementById('history-content'),
+            loadingMsg: document.getElementById('loading-message')
+        };
+
+        // --- HELPER: LÀM SẠCH URL ---
+        function cleanUrl(url) {
+            if (!url) return "";
+            if (url.includes(BACKEND_URL + "/" + BACKEND_URL)) {
+                return url.replace(BACKEND_URL + "/", "");
+            }
+            return url;
+        }
+
+        // --- 4. HÀM TẠO HTML ---
+        function createHistoryEntryHTML(tenBenh, moTa, khuyenNghi, glbUrl, imageUrl, isLiveResult = false) {
+            const fileName = glbUrl ? glbUrl.split('/').pop() : "unknown.glb";
+
+            const safeMoTa = (moTa && typeof moTa === 'string') 
+                ? moTa.replace(/\n/g, '<br>') 
+                : "<em>Không có mô tả chi tiết</em>";
+
+            const safeKhuyenNghi = (khuyenNghi && typeof khuyenNghi === 'string') 
+                ? khuyenNghi.replace(/\n/g, '<br>') 
+                : "";
+
+            const safeTenBenh = tenBenh || "Kết quả lưu trữ";
+
+            const khuyenNghiBlock = safeKhuyenNghi 
+                ? `<div><b>Khuyến nghị:</b><br><div class="pl-4 mt-1 text-gray-800">${safeKhuyenNghi}</div></div>` 
+                : "";
+
+            return `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 border-b border-gray-200 pb-6">
+                    <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-3">Mô hình 3D</h3>
+                        <model-viewer 
+                            src="${glbUrl}" 
+                            alt="Mô hình 3D" 
+                            auto-rotate 
+                            camera-controls
+                            class="w-full h-96 bg-white rounded-lg border border-gray-200">
+                        </model-viewer>
+                    </div>
+
+                    <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-3">Ảnh ${isLiveResult ? 'Đã Xử Lý' : 'Đầu vào'}</h3>
+                        <img 
+                            src="${imageUrl}" 
+                            alt="Ảnh phân tích" 
+                            class="w-full h-96 object-contain rounded-lg bg-white border border-gray-200"
+                            onerror="this.onerror=null; this.src='./assets/sample.jpg';" 
+                        >
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-lg shadow-md border border-gray-200 mb-6">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Thông tin chi tiết</h3>
+                    <div class="mb-2"><b>Tiêu đề:</b> <span class="text-blue-700 font-bold">${safeTenBenh}</span></div>
+                    <div class="text-sm text-gray-500 mb-4">
+                        ⚠️ File nguồn: ${fileName}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <b>Mô tả:</b><br>
+                        <div class="pl-4 mt-1 text-gray-800">${safeMoTa}</div>
+                    </div>
+                    
+                    ${khuyenNghiBlock}
+                </div>
+            `;
+        }
+
+        // --- 5. LOAD LỊCH SỬ (FIX LỖI MISSING FIELDS) ---
+        async function loadInitialHistory() {
+            if (elements.loadingMsg) elements.loadingMsg.textContent = 'Đang tải lịch sử phân tích...';
+
+            try {
+                // Lấy thông tin user (đảm bảo có dữ liệu)
+                const userInfo = getUserInfo();
+                console.log("Đang gửi yêu cầu tải lịch sử với:", userInfo);
+
+                const response = await fetch(USER_MODELS_ENDPOINT, {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    // Gửi body đúng chuẩn JSON mà backend yêu cầu
+                    body: JSON.stringify({ 
+                        cccd: userInfo.cccd, 
+                        wallet_address: userInfo.wallet 
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text(); // Đọc lỗi chi tiết từ server
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                if (elements.loadingMsg) elements.loadingMsg.remove();
+
+                if (data.models && data.models.length > 0) {
+                    data.models.reverse().forEach(model => {
+                        let tenBenh = "Kết quả lưu trữ";
+                        let moTa = "";
+                        let khuyenNghi = "";
+
+                        // Parse Description
+                        if (model.description) {
+                            if (typeof model.description === 'object') {
+                                tenBenh = model.description.ten_benh || tenBenh;
+                                moTa = model.description.mo_ta || "";
+                                khuyenNghi = model.description.khuyen_nghi || "";
+                            } else {
+                                try {
+                                    const parsed = JSON.parse(model.description);
+                                    tenBenh = parsed.ten_benh || tenBenh;
+                                    moTa = parsed.mo_ta || "";
+                                    khuyenNghi = parsed.khuyen_nghi || "";
+                                } catch (e) {
+                                    moTa = model.description;
+                                }
+                            }
+                        }
+
+                        let finalGlbUrl = cleanUrl(model.file_url);
+                        let finalImageUrl = cleanUrl(model.image_url) || "./assets/sample.jpg";
+
+                        const html = createHistoryEntryHTML(tenBenh, moTa, khuyenNghi, finalGlbUrl, finalImageUrl, false);
+                        elements.historyContent.insertAdjacentHTML('beforeend', html);
+                    });
+                } else {
+                    elements.historyContent.innerHTML = '<p class="text-gray-500 italic p-4">Chưa có lịch sử phân tích nào.</p>';
+                }
+            } catch (error) {
+                console.error("Lỗi history:", error);
+                if (elements.loadingMsg) elements.loadingMsg.remove();
+                elements.historyContent.innerHTML = `<p class="text-red-600 font-bold p-4">Lỗi tải lịch sử: ${error.message}</p>`;
+            }
+        }
+
+        // --- 6. UPLOAD FILE ---
+        function uploadFile(file) {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                // Nếu backend upload cần CCCD, bỏ comment dòng dưới:
+                // const userInfo = getUserInfo();
+                // formData.append('cccd', userInfo.cccd);
+
+                const xhr = new XMLHttpRequest();
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        elements.progressBar.style.width = percent + '%';
+                        elements.statusMsg.textContent = `Đang tải lên: ${percent}%...`;
+                    }
+                });
+
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState === 4) {
+                        elements.progressBar.style.width = '100%';
+                        if (xhr.status === 200) {
+                            try { resolve(JSON.parse(xhr.responseText)); } 
+                            catch (e) { reject("Phản hồi server không đúng định dạng JSON"); }
+                        } else {
+                            reject(`Lỗi HTTP: ${xhr.status}`);
+                        }
+                    }
+                };
+                xhr.open('POST', AI_CARE_ENDPOINT);
+                xhr.send(formData);
+            });
+        }
+
+        async function handleFileUpload(file) {
+            elements.uploadBtn.disabled = true;
+            elements.uploadBtn.textContent = "Đang xử lý...";
+            elements.statusContainer.style.display = 'block';
+            elements.errorMsg.style.display = 'none';
+            elements.progressBar.className = 'bg-blue-600 h-4 rounded-full transition-all duration-150';
+            elements.progressBar.style.width = '0%';
+
+            try {
+                const res = await uploadFile(file);
+                
+                elements.statusMsg.textContent = 'Xử lý thành công!';
+                elements.progressBar.classList.remove('bg-blue-600');
+                elements.progressBar.classList.add('bg-green-500');
+                
+                const resultImg = res.link_anh_api || "./assets/sample.jpg";
+                const mockUrl = `${BACKEND_URL}/data/brain+3d+model.glb`; 
+
+                const html = createHistoryEntryHTML(
+                    res.ten_benh,
+                    res.mo_ta,
+                    res.khuyen_nghi,
+                    mockUrl, 
+                    resultImg,
+                    true 
+                );
+
+                elements.historyContent.insertAdjacentHTML('afterbegin', html);
+                elements.historyContent.scrollTop = 0; 
+                
+                setTimeout(() => {
+                    elements.uploadBtn.disabled = false;
+                    elements.uploadBtn.textContent = 'Tải ảnh lên để xử lý';
+                    elements.statusContainer.style.display = 'none'; 
+                    elements.fileInput.value = ''; 
+                }, 1500);
+
+            } catch (err) {
+                console.error(err);
+                elements.statusMsg.textContent = 'Thất bại!';
+                elements.errorMsg.textContent = `Lỗi: ${err}`;
+                elements.errorMsg.style.display = 'block';
+                elements.progressBar.classList.remove('bg-blue-600');
+                elements.progressBar.classList.add('bg-red-600');
+                
+                setTimeout(() => {
+                    elements.uploadBtn.disabled = false;
+                    elements.uploadBtn.textContent = 'Tải ảnh lên để xử lý';
+                }, 3000);
+            }
+        }
+
+        // --- 7. BẮT SỰ KIỆN ---
+        elements.uploadBtn.addEventListener('click', () => elements.fileInput.click());
+        elements.fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handleFileUpload(e.target.files[0]);
+        });
+
+        // --- 8. CHẠY ---
+        loadInitialHistory();
+    })();
+</script>

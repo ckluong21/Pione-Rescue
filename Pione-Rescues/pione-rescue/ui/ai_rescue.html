@@ -1,0 +1,1107 @@
+<div id="ai-rescue-container" class="flex flex-col bg-gray-800 py-10 px-6 min-h-screen">
+  <div class="max-w-7xl mx-auto w-full">
+    <h2 class="text-4xl font-bold text-center text-red-500 mb-10">
+      <i class="bi bi-shield-fill-exclamation"></i>
+      AI Rescue - Hỗ trợ khẩn cấp
+    </h2>
+
+    <div class="flex flex-col lg:flex-row gap-8 w-full">
+      <div
+        class="w-full lg:w-1/2 bg-gray-900 p-8 rounded-2xl shadow-lg border border-gray-700 flex flex-col"
+        style="max-height: 80vh"
+      >
+        <div class="flex-shrink-0">
+          <h3
+            class="text-xl font-semibold text-gray-200 mb-6 flex items-center gap-2"
+          >
+            <i class="bi bi-image text-red-400"></i>
+            Phân tích hiện trường
+          </h3>
+
+          <div class="mb-6 text-center">
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+              <button
+                onclick="rescue_captureFromCamera()"
+                class="btn btn-lg text-white d-flex align-items-center justify-content-center gap-2 shadow-sm border-0 px-4 py-2 rescue-btn-camera"
+              >
+                <i class="bi bi-camera-fill fs-5"></i>
+                <span class="fw-semibold">Camera</span>
+              </button>
+
+              <button
+                onclick="rescue_uploadImage()"
+                class="btn btn-lg text-white d-flex align-items-center justify-content-center gap-2 shadow-sm border-0 px-4 py-2 rescue-btn-upload"
+              >
+                <i class="bi bi-upload fs-5"></i>
+                <span class="fw-semibold">Upload ảnh</span>
+              </button>
+              <input
+                type="file"
+                id="rescue-file-input"
+                class="hidden"
+                accept="image/*"
+              />
+
+              <button
+                onclick="rescue_showFirstAidList()"
+                class="btn btn-lg text-white d-flex align-items-center justify-content-center gap-2 shadow-sm border-0 px-4 py-2 rescue-btn-list"
+              >
+                <i class="bi bi-list-check fs-5"></i>
+                <span class="fw-semibold">Danh sách Sơ cứu</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="rescue-analysis-wrapper" class="flex-1 overflow-y-auto pt-4 border-t border-gray-700">
+          
+          <div id="rescue-list-view" class="hidden space-y-3">
+             </div>
+
+          <div id="rescue-analysis-section" class="hidden">
+            <div
+              class="flex flex-col items-center justify-center gap-6 mb-8"
+            >
+              <div class="w-full md:w-3/4 lg:w-2/3 text-center">
+                <img
+                  id="rescue-preview-image"
+                  class="w-full max-h-64 object-contain rounded-xl border border-gray-600 shadow-md"
+                  alt="Preview"
+                />
+                <p class="mt-2 text-gray-400 text-sm italic">Ảnh gốc</p>
+              </div>
+            </div>
+
+            <div
+              id="rescue-loading-animation"
+              class="w-full text-center mb-6"
+              style="display: none"
+            >
+              <div
+                class="w-3/4 mx-auto bg-gray-700 rounded-full h-4 overflow-hidden"
+              >
+                <div
+                  id="rescue-progress-bar"
+                  class="h-4 bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-500 ease-out"
+                  style="width: 0%"
+                ></div>
+              </div>
+              <p
+                id="rescue-loading-text"
+                class="mt-3 text-red-400 font-medium italic"
+              ></p>
+            </div>
+
+            <div id="rescue-results-section" class="hidden pt-6 mt-4">
+              <h4 class="text-2xl font-semibold mb-4 text-gray-100">
+                Kết quả phân tích nhanh
+              </h4>
+              <div
+                id="rescue-result-details"
+                class="space-y-3 text-gray-300"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="w-full lg:w-1/2 bg-gray-900 rounded-2xl shadow-lg border border-gray-700 flex flex-col"
+        style="height: 80vh"
+      >
+        <div
+          class="bg-gradient-to-r from-red-600 to-orange-600 text-white px-4 py-3 rounded-t-2xl flex justify-between items-center flex-shrink-0"
+        >
+          <span class="font-semibold">AI Rescue Chat</span>
+          <span class="text-xs opacity-80">Trực tuyến</span>
+        </div>
+
+        <div id="rescue-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+          <div class="ai-message">
+            <div
+              class="inline-block bg-gray-700 text-gray-200 px-3 py-2 rounded-xl mb-1"
+            >
+              👋 Xin chào, tôi là <strong>AI Rescue</strong>. Hãy cung cấp ảnh
+              hiện trường và mô tả tình hình. Tôi sẽ kết nối bạn với đội cứu hộ
+              gần nhất.
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-700 flex items-center p-3 flex-shrink-0">
+          <input
+            id="rescue-chat-input"
+            type="text"
+            placeholder="Mô tả tình hình khẩn cấp..."
+            class="flex-1 border border-gray-600 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+          <button
+            id="rescue-send-chat"
+            class="ml-2 bg-red-600 hover:bg-red-700 text-white rounded-lg px-3 py-2 text-sm font-semibold"
+          >
+            Gửi
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div id="rescue-guide-loader" class="fixed inset-0 bg-black bg-opacity-70 flex-col flex items-center justify-center z-50 p-4" style="display: none;">
+  <div class="rescue-spinner"></div>
+  <p id="rescue-guide-loader-text" class="text-white text-lg mt-4 font-semibold">Đang xử lý ảnh...</p>
+</div>
+
+
+<div id="rescue-timeline-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4" style="display: none;">
+  <div class="bg-gray-900 rounded-2xl shadow-xl w-full max-w-2xl flex flex-col" style="max-height: 90vh;">
+    
+    <div class="flex justify-between items-center p-4 border-b border-gray-700">
+      <h3 id="rescue-timeline-title" class="text-xl font-semibold text-gray-100"></h3>
+      <div class="flex items-center gap-3">
+        <button id="rescue-timeline-tools-btn" class="btn btn-danger d-flex align-items-center justify-content-center" aria-label="Tìm dụng cụ" style="background: white;color: red;width: 40px;height: 40px;border-radius: 50%;display: flex;align-items: center;justify-content: center;"><span style="font-size: 1.25rem;">✚</span></button>
+        <button id="rescue-timeline-close" class="text-gray-400 hover:text-red-500">
+          <i class="bi bi-x-lg fs-5"></i>
+        </button>
+      </div>
+    </div>
+    <div class="p-6 flex-1 overflow-y-auto">
+      <div id="rescue-timeline-steps" class="flex justify-between items-center mb-6">
+        </div>
+      
+      <div id="rescue-map-container" class="mb-4" style="display: none;">
+        </div>
+      <div id="rescue-timeline-content" class="prose max-w-none bg-gray-800 p-4 rounded-lg text-gray-200">
+        </div>
+    </div>
+
+    <div class="flex justify-between p-4 border-t border-gray-700 bg-gray-800 rounded-b-2xl">
+      <button id="rescue-timeline-back" class="btn btn-secondary d-flex align-items-center justify-content-center rescue-btn-secondary" aria-label="Quay lại" style="width: 44px;height: 44px;border-radius: 50%;display: flex;align-items: center;justify-content: center;">
+          <i class="bi bi-arrow-left"></i>
+      </button>
+      <div class="flex gap-2"> 
+          <button id="rescue-timeline-next" class="btn btn-primary d-flex align-items-center justify-content-center rescue-btn-primary" aria-label="Tiếp theo" style="width: 44px;height: 44px;border-radius: 50%;display: flex;justify-content: center;align-items: center;">
+              <i class="bi bi-arrow-right"></i>
+          </button>
+          <button id="rescue-timeline-end" class="btn btn-success d-flex align-items-center justify-content-center rescue-btn-list" aria-label="Kết thúc" style="width: 44px;height: 44px;border-radius: 50%;display: flex;align-items: center;justify-content: center;">
+              <i class="bi bi-check-circle"></i>
+          </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Container scroll (chỉ áp dụng cho 2 cột) */
+  #ai-rescue-container {
+    background: linear-gradient(to bottom right, #2d3748, #1a202c); /* Darker gradient */
+  }
+
+  /* Hover zoom (đổi ID và màu shadow) */
+  #rescue-preview-image,
+  #rescue-result-image {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  #rescue-preview-image:hover,
+  #rescue-result-image:hover {
+    transform: scale(1.04);
+    box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+  }
+
+  /* Markdown (đổi màu) */
+  .prose-rescue {
+    background-color: #374151; /* Darker gray */
+    padding: 1rem 1.25rem;
+    border-radius: 0.75rem;
+    border-left: 4px solid #ef4444; /* Red border */
+    color: #d1d5db; /* Light gray text */
+  }
+  .prose-rescue strong {
+    color: #fca5a5; /* Light red */
+  }
+  /* Căn lề cho list trong popup */
+  .prose-rescue ul {
+    padding-left: 1.5rem;
+  }
+
+  /* CSS cho các bong bóng chat */
+  #rescue-chat-messages .user-message {
+    text-align: right;
+  }
+  #rescue-chat-messages .user-message > div {
+    background-color: #fca5a5; /* Light red */
+    color: #7f1d1d; /* Darker red */
+    display: inline-block;
+    border-radius: 12px;
+    padding: 8px 12px;
+  }
+  #rescue-chat-messages .ai-message {
+    text-align: left;
+  }
+  #rescue-chat-messages .ai-message > div {
+    background-color: #4b5563; /* Dark gray */
+    color: #e5e7eb; /* Light gray */
+    display: inline-block;
+    border-radius: 12px;
+    padding: 8px 12px;
+  }
+
+  /* --- CSS CHO TIMELINE POPUP (MỚI) --- */
+  .timeline-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    flex-grow: 1;
+  }
+  .timeline-step .step-circle {
+    width: 36px; /* Slightly larger */
+    height: 36px;
+    border-radius: 50%;
+    background-color: #4b5563; /* Dark gray */
+    color: #9ca3af; /* Light gray */
+    border: 3px solid #374151; /* Darker border */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    z-index: 10;
+    transition: all 0.3s ease;
+  }
+  .timeline-step .step-title {
+    font-size: 0.85rem; /* Slightly larger */
+    font-weight: 600;
+    color: #9ca3af; /* Light gray */
+    margin-top: 8px;
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+  /* Đường gạch nối */
+  .timeline-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 16px; /* Căn giữa vòng tròn */
+    left: 50%;
+    width: 100%;
+    height: 3px; /* Slightly thinner */
+    background-color: #4b5563; /* Dark gray */
+    z-index: 5;
+    transition: background-color 0.3s ease;
+  }
+  /* Trạng thái Active */
+  .timeline-step.active .step-circle {
+    background-color: #3b82f6; /* blue-500 */
+    color: white;
+    border-color: #60a5fa; /* blue-400 */
+  }
+  .timeline-step.active .step-title {
+    color: #60a5fa; /* blue-400 */
+  }
+  /* Trạng thái Hoàn thành (cho đường gạch) */
+  .timeline-step.completed:not(:last-child)::after {
+      background-color: #3b82f6; /* blue-500 */
+  }
+
+  /* --- CSS CHO DANH SÁCH SƠ CỨU (MỚI) --- */
+  .first-aid-list-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      border: 1px solid #374151; /* Darker gray */
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s, box-shadow 0.2s;
+      background-color: #1f2937; /* Darker background for list item */
+  }
+  .first-aid-list-item:hover {
+      background-color: #374151; /* Even darker on hover */
+      box-shadow: 0 4px 10px rgba(0,0,0, 0.2);
+  }
+  .first-aid-list-item .icon {
+      font-size: 1.5rem;
+      color: #f87171; /* red-400 */
+      background-color: #450a0a; /* Dark red background for icon */
+      padding: 0.5rem;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+  }
+  .first-aid-list-item h4 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #d1d5db; /* Light gray text */
+  }
+
+  /* --- BUTTON STYLES (MỚI) --- */
+  .rescue-btn-camera {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    border-radius: 10px;
+    transition: 0.3s;
+  }
+  .rescue-btn-camera:hover {
+    background: linear-gradient(135deg, #ea580c, #c2410c);
+  }
+
+  .rescue-btn-upload {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border-radius: 10px;
+    transition: 0.3s;
+  }
+  .rescue-btn-upload:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  }
+
+  .rescue-btn-list {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-radius: 10px;
+    transition: 0.3s;
+  }
+  .rescue-btn-list:hover {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+  }
+
+  /* CSS cho nút icon tròn trong popup */
+  .rescue-btn-primary {
+    background-color: #3b82f6; /* Blue */
+    color: white;
+    /* (style="border-radius: 50%") sẽ ghi đè cái này */
+    border-radius: 8px; 
+    padding: 8px 16px;
+    transition: background-color 0.2s ease;
+  }
+  .rescue-btn-primary:hover {
+    background-color: #2563eb; /* Darker blue */
+  }
+
+  .rescue-btn-secondary {
+    background-color: #4b5563; /* Gray */
+    color: white;
+    /* (style="border-radius: 50%") sẽ ghi đè cái này */
+    border-radius: 8px;
+    padding: 8px 16px;
+    transition: background-color 0.2s ease;
+  }
+  .rescue-btn-secondary:hover {
+    background-color: #374151; /* Darker gray */
+  }
+
+/* --- CSS CHO SPINNER XOAY VÒNG --- */
+.rescue-spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid #4b5563; /* Màu xám nền */
+  border-top-color: #ef4444; /* Màu đỏ */
+  border-radius: 50%;
+  animation: rescue-spin 1s linear infinite;
+}
+
+@keyframes rescue-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* (*** MỚI ***) CSS CHO SPINNER NHỎ VÀ ANIMATION CHO NÚT */
+.rescue-spinner-small {
+    width: 30px;
+    height: 30px;
+    border: 4px solid #4b5563;
+    border-top-color: #ef4444;
+    border-radius: 50%;
+    animation: rescue-spin 1s linear infinite;
+    margin: 1rem auto;
+}
+.rescue-spin-icon {
+    animation: rescue-spin 1s linear infinite;
+}
+/* (*** KẾT THÚC MỚI ***) */
+
+/* Tìm khối này trong <style> của bạn */
+#rescue-guide-loader {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1050; /* <-- SỬA DÒNG NÀY */
+  display: none;
+  
+}
+
+/* Tìm khối này trong <style> của bạn */
+#rescue-timeline-modal {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1040; /* <-- SỬA DÒNG NÀY */
+  padding: 1rem;
+  display: none;
+}
+
+</style>
+
+
+<script id="ai-rescue-script">
+// Đảm bảo script chạy trong 1 scope riêng biệt để tránh xung đột
+(function () {
+    // === CÁC BIẾN CẤU HÌNH ===
+    const RESCUE_API_URL = "http://localhost:3004/ai-rescue"; 
+
+    // Các thông báo loading theo chủ đề "Cứu hộ"
+    const rescueLoadingMessages = [
+      "Đang tải ảnh hiện trường...",
+      "Đang xác định vị trí...",
+      "AI đang phân tích tình huống...",
+      "Nhận diện đối tượng trong ảnh...",
+      "Đánh giá mức độ nguy hiểm...",
+      "Đang tìm đội cứu hộ gần nhất...",
+      "Chuẩn bị gửi thông tin khẩn cấp...",
+      "Đang tổng hợp kết quả...",
+    ];
+
+    // === (*** DỮ LIỆU GỐC ***) DỮ LIỆU HƯỚNG DẪN SƠ CỨU ===
+    const firstAidGuides = new Map([
+      ['a125o3031525665b2ffsgc1515.jpg', {
+        title: 'Hướng dẫn Sơ cứu Cầm máu',
+        icon: 'bi-bandaid',
+        steps: [
+          {
+            title: 'Đánh giá',
+            content: `
+                <p><strong>1. Đánh giá tình huống:</strong></p>
+                <ul>
+                  <li>Bảo đảm khu vực an toàn cho bản thân và nạn nhân.</li>
+                  <li>Kiểm tra phản ứng của nạn nhân, xác định nạn nhân còn tỉnh hay không.</li>
+                  <li>Quan sát và xác định vị trí chảy máu, mức độ máu chảy.</li>
+                </ul>`,
+            requiresTools: true
+          },
+          {
+            title: 'Cầm máu',
+            content: `
+                <p><strong>2. Cầm máu trực tiếp:</strong></p>
+                <ul>
+                  <li>Sử dụng gạc, khăn, hoặc vải sạch ép trực tiếp lên vết thương.</li>
+                  <li>Duy trì lực ép liên tục, không nhấc ra kiểm tra trong quá trình cầm máu.</li>
+                  <li>Nếu máu thấm qua, đặt thêm lớp gạc hoặc vải khác chồng lên, không bỏ lớp cũ ra.</li>
+                </ul>`,
+            requiresTools:false
+          },
+          {
+            title: 'Băng ép',
+            content: `
+                <p><strong>3. Băng ép hoặc sử dụng garô khi cần thiết:</strong></p>
+                <ul>
+                  <li>Nếu máu vẫn chảy nhiều sau khi ép, tiến hành băng ép cố định vùng bị thương.</li>
+                  <li>Trường hợp chảy máu nặng ở tay hoặc chân, đặt garô cao hơn vết thương từ 5 đến 10 cm.</li>
+                  <li>Ghi nhớ thời điểm đặt garô và không siết quá chặt để tránh tổn thương mô.</li>
+                </ul>`,
+            requiresTools: true
+          }
+        ]
+      }],
+      ['img02.jpg', {
+        title: 'Hướng dẫn Sơ cứu Ngạt thở (Heimlich)',
+        icon: 'bi-person-exclamation',
+        steps: [
+          {
+            title: 'Đánh giá & Khuyến khích ho',
+            content: `
+                <p><strong>1. Đánh giá tình hình:</strong></p>
+                <ul>
+                    <li>Hỏi nạn nhân: "Bạn có bị hóc không?".</li>
+                    <li>Nếu nạn nhân có thể ho hoặc nói, khuyến khích họ <strong>tiếp tục ho mạnh</strong> để cố gắng tống dị vật ra ngoài.</li>
+                    <li>Nếu nạn nhân gật đầu nhưng <strong>không thể nói, ho, hoặc thở</strong> (có dấu hiệu ôm cổ), hãy hành động ngay. Yêu cầu người khác gọi 115.</li>
+                </ul>`,
+            requiresTools: false
+          },
+          {
+            title: 'Vỗ lưng',
+            content: `
+                <p><strong>2. Thực hiện 5 lần vỗ lưng:</strong></p>
+                <ul>
+                    <li>Đứng bên cạnh và hơi nghiêng về phía sau nạn nhân.</li>
+                    <li>Một tay đỡ ngực nạn nhân và cho họ cúi người về phía trước (để dị vật dễ văng ra ngoài hơn).</li>
+                    <li>Dùng gót bàn tay còn lại vỗ mạnh 5 lần vào vùng lưng giữa hai xương bả vai.</li>
+                </ul>`,
+            requiresTools: false
+          },
+          {
+            title: 'Ép bụng (Heimlich)',
+            content: `
+                <p><strong>3. Thực hiện 5 lần ép bụng (Nghiệm pháp Heimlich):</strong></p>
+                <ul>
+                    <li>Đứng sau lưng nạn nhân, vòng hai tay ra trước.</li>
+                    <li>Nắm một tay lại, đặt ngay trên rốn của nạn nhân.</li>
+                    <li>Tay kia ôm lấy nắm đấm, giật mạnh và dứt khoát <strong>vào trong và lên trên</strong>.</li>
+                    <li>Lặp lại 5 lần.</li>
+                    <li><strong>Luân phiên 5 lần vỗ lưng và 5 lần ép bụng</strong> cho đến khi dị vật bật ra hoặc nạn nhân bất tỉnh.</li>
+                </ul>`,
+            requiresTools: false,
+            videoUrl: 'videos/cam_mau_demo.mp4'
+          }
+        ]
+      }]
+    ]);
+
+    let rescueCurrentStep = 0;
+    let rescueCurrentGuideKey = null;
+
+    // === (*** ĐÃ SỬA ***) HÀM LẤY CCD TỪ SESSION STORAGE ===
+    function rescue_getCurrentUserCCD() {
+        const cccd = sessionStorage.getItem('cccd');
+        const wallet = sessionStorage.getItem('walletAddress');
+        
+        if (!cccd || !wallet) {
+            console.error("Lỗi: Không tìm thấy CCCD hoặc Wallet Address trong sessionStorage.");
+            // Trả về mock data chỉ trong trường hợp không tìm thấy storage, 
+            // nhưng API call sẽ phụ thuộc vào việc client/backend đã setup data đúng.
+            return { cccd: "0123456789", walletAddress: "0x41DBDD4C90bFDFedDb077282Dbf0fB6755FBdbb9" };
+        }
+        return { cccd: cccd, walletAddress: wallet };
+    }
+
+    // ===================================
+    // 🖼️ PHẦN 1: XỬ LÝ ẢNH (CỘT TRÁI)
+    // ===================================
+
+    // 1.1. Nút Upload ảnh
+    function rescue_uploadImage() {
+      document.getElementById('rescue-file-input').click();
+    }
+
+    // 1.2. Chụp ảnh từ camera (Giữ nguyên logic tạo file)
+    async function rescue_captureFromCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        video.play();
+
+        const modal = document.createElement("div");
+        modal.className =
+          "fixed inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-50";
+
+        modal.innerHTML = `
+          <video autoplay playsinline class="rounded-xl shadow-lg border-4 border-white w-[90%] max-w-md"></video>
+          <div class="mt-4 flex gap-4">
+            <button id="rescue-capture-btn" class="ai-rescue-btn text-white px-5 py-2 rounded-lg rescue-btn-camera">📸 Chụp</button>
+            <button id="rescue-cancel-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-5 py-2 rounded-lg rescue-btn-secondary">Hủy</button>
+          </div>
+        `;
+        modal.querySelector("video").srcObject = stream;
+        document.body.appendChild(modal);
+
+        modal.querySelector("#rescue-cancel-btn").onclick = () => {
+          stream.getTracks().forEach((track) => track.stop());
+          modal.remove();
+        };
+
+        modal.querySelector("#rescue-capture-btn").onclick = async () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          canvas.getContext("2d").drawImage(video, 0, 0);
+          stream.getTracks().forEach((track) => track.stop());
+
+          const blob = await new Promise((resolve) =>
+            canvas.toBlob(resolve, "image/jpeg")
+          );
+          const file = new File([blob], "Captured.jpg", { type: "image/jpeg" });
+
+          modal.remove();
+          rescue_handleFileProcessing(file); 
+        };
+      } catch (err) {
+        alert("Không thể truy cập camera. Vui lòng cấp quyền truy cập!");
+        console.error("Camera error:", err);
+      }
+    }
+
+    // 1.3. Xử lý hiển thị
+    function rescue_showAnalysisUI(showProgressBar = false) {
+      const listView = document.getElementById('rescue-list-view');
+      if (listView) listView.classList.add('hidden');
+
+      document.getElementById("rescue-analysis-section").classList.remove("hidden");
+      document.getElementById("rescue-results-section").classList.add("hidden");
+      document.getElementById("rescue-loading-animation").style.display = showProgressBar ? "block" : "none";
+    }
+
+    function rescue_previewImage(src) {
+      document.getElementById("rescue-preview-image").src = src;
+      document.querySelector('#rescue-analysis-section p.mt-2').textContent = "Ảnh gốc";
+    }
+
+    // 1.4. Gọi API phân tích ảnh (*** ĐÃ SỬA: POST FILE DATA ***)
+    async function rescue_startAnalysis(file) {
+      document.getElementById("rescue-loading-animation").style.display = "block";
+
+      const loadingText = document.getElementById("rescue-loading-text");
+      const progressBar = document.getElementById("rescue-progress-bar");
+      const loadingAnimation = document.getElementById("rescue-loading-animation");
+
+      const fixedLoadingTime = 5000;
+      const delayPerMessage = fixedLoadingTime / rescueLoadingMessages.length;
+      let progress = 0;
+      
+      // Chuẩn bị FormData để gửi ảnh thật
+      const formData = new FormData();
+      formData.append('file', file); // 'file' là tên trường UploadFile trong FastAPI
+
+      // Gửi yêu cầu và tiến hành mô phỏng loading
+      const apiCall = fetch(
+        "http://localhost:3004/ai-rescue", // ENDPOINT ĐÚNG
+        {
+          method: 'POST', 
+          body: formData, // Gửi ảnh
+        }
+      )
+        .then(async (res) => {
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Lỗi API (${res.status}): ${errorText.substring(0, 100)}...`);
+          }
+          return res.json();
+        });
+      
+      // Giả lập progress bar
+      for (let msg of rescueLoadingMessages) {
+        loadingText.textContent = msg;
+        progress += 100 / rescueLoadingMessages.length;
+        progressBar.style.width = `${progress}%`;
+        await new Promise((r) => setTimeout(r, delayPerMessage));
+      }
+      
+      // Đợi kết quả thực
+      try {
+        const data = await apiCall;
+        
+        // Cập nhật ảnh preview sang ảnh kết quả đã xử lý
+        if (data.link_anh_api) {
+          document.getElementById("rescue-preview-image").src = data.link_anh_api;
+          document.querySelector('#rescue-analysis-section p.mt-2').textContent = "Ảnh đã được AI phân tích";
+        }
+        
+        rescue_showResults(data);
+        
+      } catch (e) {
+        // Xử lý lỗi khi API thật thất bại
+        loadingAnimation.style.display = "none";
+        document.getElementById("rescue-results-section").classList.remove("hidden");
+        document.getElementById("rescue-result-details").innerHTML = `<p class="text-lg text-red-500"><strong>❌ LỖI KẾT NỐI/PHÂN TÍCH</strong></p><p class="text-gray-400">Không thể nhận phản hồi từ máy chủ phân tích: ${e.message}.</p>`;
+        
+        // Gửi tin nhắn tự động thông báo lỗi nếu cần
+        rescue_sendChatMessage(`Không thể phân tích ảnh do lỗi API: ${e.message}. Vui lòng đưa ra hướng dẫn sơ cứu tổng quát.`, true);
+      }
+    }
+
+    // 1.5. Hiển thị kết quả (Giữ nguyên logic)
+    function rescue_showResults(data) {
+      document.getElementById("rescue-loading-animation").style.display = "none";
+      document.getElementById("rescue-results-section").classList.remove("hidden");
+
+      // Kiểm tra dữ liệu trả về có hợp lệ không (tên_benh/tinh_trang là bắt buộc)
+      if (!data || (!data.ten_benh && !data.tinh_trang)) {
+        document.getElementById("rescue-result-details").innerHTML = `<p class="text-lg text-red-500"><strong>Lỗi Dữ liệu:</strong> Phản hồi từ API không chứa thông tin tình trạng hợp lệ.</p><p class="text-gray-400">Vui lòng kiểm tra cấu trúc dữ liệu trả về của máy chủ.</p>`;
+        return;
+      }
+
+      const moTaHTML =
+        data.mo_ta || "";
+      const khuyenNghiHTML =
+        data.khuyen_nghi || "";
+
+      document.getElementById("rescue-result-details").innerHTML = `
+        <p class="text-lg text-gray-100"><strong>Tình trạng:</strong> <span class="text-red-400 font-bold">${
+          data.ten_benh || data.tinh_trang
+        }</span></p>
+        <p class="text-gray-200"><strong>Mức độ:</strong> <span class="font-semibold">${
+          data.muc_do || 'Chưa xác định'
+        }</span></p>
+        <p class="text-gray-200"><strong>Độ chính xác:</strong> ${Math.round(
+          (data.do_chinh_xac || 0) * 100
+        )}%</p>
+
+        <div class="mt-4">
+          <p class="font-semibold text-gray-100">Mô tả:</p>
+          <div class="prose-rescue max-w-none text-gray-300">${moTaHTML.replace(/\n/g, '<br>')}</div>
+        </div>
+
+        <div class="mt-4">
+          <p class="font-semibold text-gray-100">Khuyến nghị khẩn cấp:</p>
+          <div class="prose-rescue max-w-none text-gray-300">${khuyenNghiHTML.replace(/\n/g, '<br>')}</div>
+        </div>
+      `;
+
+      // Tự động gửi tin nhắn đầu tiên cho AI Chat dựa trên kết quả
+      const aiInput = `Đưa ra cách sở cứu, hoặc cách giải quyết trình trạng trên 1 cách nhanh nhất: ${
+        data.tinh_trang || data.ten_benh
+      }. ${data.mo_ta ? data.mo_ta.replace(/\*\*/g, "") : ''}`;
+      rescue_sendChatMessage(aiInput, true); // true = gửi tự động
+    }
+
+    // 1.5b. HÀM XỬ LÝ TRUNG GIAN (Điều phối giữa Timeline và AI)
+    function rescue_handleFileProcessing(file) {
+      rescue_showAnalysisUI(false);
+      document.getElementById("rescue-results-section").classList.add("hidden");
+      rescue_previewImage(URL.createObjectURL(file));
+
+      const guideLoader = document.getElementById('rescue-guide-loader');
+      if (guideLoader) guideLoader.style.display = 'flex';
+      
+      const guideLoaderText = document.getElementById('rescue-guide-loader-text');
+      if (guideLoaderText) guideLoaderText.textContent = "Đang xử lý ảnh...";
+
+      const minDelay = 1000; 
+      const maxDelay = 2000; 
+      const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+
+      // Chạy tiến trình xử lý ngắn (giả lập)
+      setTimeout(() => {
+        if (guideLoader) guideLoader.style.display = 'none';
+        
+        // Sau khi xử lý ảnh (giả định), ta quyết định có phải là file hướng dẫn không
+        if (firstAidGuides.has(file.name)) {
+          rescue_showTimelinePopup(file.name);
+        } else {
+          // Nếu không phải file hướng dẫn -> Chạy phân tích AI thật
+          rescue_startAnalysis(file); 
+        }
+      }, randomDelay);
+    }
+
+
+    // =========================================
+    // 📖 PHẦN 1B: DANH SÁCH & TIMELINE (Giữ nguyên logic)
+    // =========================================
+
+    // 1.6. (MỚI) Hiển thị danh sách sơ cứu
+    function rescue_showFirstAidList() {
+      const listView = document.getElementById('rescue-list-view');
+      const analysisView = document.getElementById('rescue-analysis-section');
+      
+      // Ẩn khu vực phân tích
+      analysisView.classList.add('hidden');
+      
+      // Xóa nội dung cũ và tạo danh sách
+      listView.innerHTML = '';
+      listView.classList.remove('hidden');
+
+      firstAidGuides.forEach((guide, key) => {
+        const item = document.createElement('div');
+        item.className = 'first-aid-list-item';
+        item.innerHTML = `
+          <div class="icon">
+            <i class="bi ${guide.icon}"></i>
+          </div>
+          <h4>${guide.title}</h4>
+        `;
+        // Khi nhấn vào item, mở timeline
+        item.onclick = () => {
+            const guideLoader = document.getElementById('rescue-guide-loader');
+            const guideLoaderText = document.getElementById('rescue-guide-loader-text');
+            if (guideLoader) guideLoader.style.display = 'flex';
+            if (guideLoaderText) guideLoaderText.textContent = "Đang tải hướng dẫn sơ cứu...";
+
+            setTimeout(() => {
+                if (guideLoader) guideLoader.style.display = 'none';
+                rescue_showTimelinePopup(key);
+            }, 500); 
+        };
+        listView.appendChild(item);
+      });
+    }
+
+    // 1.7. (MỚI) Hiển thị Popup Timeline
+    function rescue_showTimelinePopup(imageName) {
+      if (!firstAidGuides.has(imageName)) return;
+
+      rescueCurrentStep = 0;
+      rescueCurrentGuideKey = imageName;
+      
+      const guide = firstAidGuides.get(imageName);
+      const modal = document.getElementById('rescue-timeline-modal');
+      const titleEl = document.getElementById('rescue-timeline-title');
+      const stepsEl = document.getElementById('rescue-timeline-steps');
+
+      titleEl.textContent = guide.title;
+      stepsEl.innerHTML = ''; 
+
+      guide.steps.forEach((step, index) => {
+        const stepDiv = document.createElement('div');
+        stepDiv.className = 'timeline-step';
+        stepDiv.innerHTML = `
+          <div class="step-circle">${index + 1}</div>
+          <div class="step-title">${step.title}</div>
+        `;
+        stepsEl.appendChild(stepDiv);
+      });
+      
+      rescue_updateTimelineContent();
+      
+      document.getElementById('rescue-map-container').style.display = 'none';
+      document.getElementById('rescue-map-container').innerHTML = '';
+      
+      modal.style.display = 'flex';
+    }
+
+    // 1.8. Cập nhật nội dung và trạng thái Timeline (*** ĐÃ CẬP NHẬT VIDEO & MAP ***)
+    function rescue_updateTimelineContent() {
+      if (!rescueCurrentGuideKey) return;
+
+      const guide = firstAidGuides.get(rescueCurrentGuideKey);
+      const stepData = guide.steps[rescueCurrentStep];
+      
+      const contentEl = document.getElementById('rescue-timeline-content');
+      const stepsEls = document.querySelectorAll('#rescue-timeline-steps .timeline-step');
+      const backBtn = document.getElementById('rescue-timeline-back');
+      const nextBtn = document.getElementById('rescue-timeline-next');
+      const endBtn = document.getElementById('rescue-timeline-end'); 
+      
+      const toolsBtn = document.getElementById('rescue-timeline-tools-btn');
+      const mapContainer = document.getElementById('rescue-map-container');
+
+      // Cập nhật nội dung
+      contentEl.innerHTML = stepData.content;
+
+      // Cập nhật trạng thái (active/completed)
+      stepsEls.forEach((stepEl, index) => {
+        stepEl.classList.remove('active', 'completed');
+        if (index < rescueCurrentStep) {
+          stepEl.classList.add('completed');
+        } else if (index === rescueCurrentStep) {
+          stepEl.classList.add('active');
+        }
+      });
+
+      // Ẩn/hiện nút 
+      backBtn.style.display = (rescueCurrentStep === 0) ? 'none' : 'flex';
+      
+      if (rescueCurrentStep === guide.steps.length - 1) {
+        nextBtn.style.display = 'none';
+        endBtn.style.display = 'flex'; 
+      } else {
+        nextBtn.style.display = 'flex';
+        endBtn.style.display = 'none'; 
+      }
+      
+      if (stepData.requiresTools) {
+        toolsBtn.style.display = 'flex';
+      } else {
+        toolsBtn.style.display = 'none';
+      }
+      
+      // Ẩn map/video đi khi chuyển bước (để reset)
+      mapContainer.style.display = 'none';
+      mapContainer.innerHTML = '';
+      toolsBtn.disabled = false;
+      toolsBtn.innerHTML = '<span style="font-size: 1.25rem;">✚</span>';
+
+
+      // --- BẮT ĐẦU CODE MỚI CHO VIDEO ---
+      if (stepData.videoUrl) {
+        mapContainer.innerHTML = `
+          <video 
+              width="100%" 
+              height="300" 
+              controls 
+              autoplay 
+              muted 
+              loop 
+              style="border-radius: 8px; background-color: #000;"
+          >
+              <source src="${stepData.videoUrl}" type="video/mp4">
+              Trình duyệt của bạn không hỗ trợ thẻ video.
+          </video>
+        `;
+        mapContainer.style.display = 'block';
+      }
+      // --- KẾT THÚC CODE MỚI CHO VIDEO ---
+    }
+    
+    // (*** HÀM MỚI 1.9 ***) TÌM DỤNG CỤ GẦN ĐÂY
+    function rescue_findNearbyTools() {
+        const mapContainer = document.getElementById('rescue-map-container');
+        const toolsBtn = document.getElementById('rescue-timeline-tools-btn');
+        
+        // 1. Hiển thị loading
+        toolsBtn.disabled = true;
+        toolsBtn.innerHTML = '<i class="bi bi-arrow-repeat rescue-spin-icon"></i>'; // Icon xoay
+        
+        mapContainer.style.display = 'block';
+        mapContainer.innerHTML = `
+            <div class="rescue-spinner-small"></div>
+            <p class="text-gray-400 text-center text-sm italic">Đang tìm nhà thuốc gần nhất...</p>
+        `;
+        
+        // 2. Giả lập delay 2 giây (thay cho việc lấy GPS)
+        setTimeout(() => {
+            const demoMapUrl = `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.4471746439!2d106.69728807480579!3d10.77698888937176!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f38f1a18def%3A0x1d05a417c80088db!2zRGluaCDEkOG7mWMgTOG6rXA!5e0!3m2!1svi!2s!4v1730764619421!5m2!1svi!2s`; 
+            
+            mapContainer.innerHTML = `
+                <p class="text-gray-400 text-center text-sm italic mb-2">Đã tìm thấy các vị trí! (Bản đồ minh họa)</p>
+                <iframe 
+                    width="100%" 
+                    height="300" 
+                    frameborder="0" 
+                    style="border:0; border-radius: 8px;" 
+                    src="${demoMapUrl}" 
+                    allowfullscreen>
+                </iframe>
+            `;
+            
+            // 4. Reset nút (nhưng vẫn để nó bị disabled, vì đã tìm xong)
+            toolsBtn.innerHTML = '<i class="bi bi-check-lg"></i>'; // Đổi icon thành "đã xong"
+
+        }, 2000);
+    }
+    // (*** KẾT THÚC HÀM MỚI ***)
+
+
+    // =================================
+    // 💬 PHẦN 2: XỬ LÝ CHAT (CỘT PHẢI)
+    // =================================
+
+    const chatMessages = document.getElementById("rescue-chat-messages");
+    const chatInput = document.getElementById("rescue-chat-input");
+    const sendButton = document.getElementById("rescue-send-chat");
+
+    async function rescue_sendChatMessage(messageOverride, isAuto = false) {
+      const msg = messageOverride || chatInput.value.trim();
+      if (!msg) return;
+
+      const userCCD = rescue_getCurrentUserCCD();
+      if (!userCCD) {
+        alert(
+          "Không tìm thấy thông tin định danh (CCD). Không thể gửi tin nhắn."
+        );
+        return;
+      }
+
+      if (!isAuto) {
+        appendMessage(msg, "user-message");
+        chatInput.value = "";
+      }
+
+      const loadingEl = appendMessage(
+        "AI Rescue đang xử lý...",
+        "ai-message",
+        true
+      );
+
+      try {
+        const res = await fetch(`https://workflow.emg.edu.vn:5678/webhook/rescue`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: msg,
+            ccd: userCCD.cccd, // Sử dụng cccd từ đối tượng trả về
+          }),
+        });
+
+        if (!res.ok) throw new Error(`Lỗi máy chủ: ${res.status}`);
+
+        const data = await res.json();
+
+        loadingEl.remove();
+
+        const reply = data.output || data.reply || "AI không có phản hồi.";
+        const replyHTML = reply; 
+
+        appendMessage(replyHTML, "ai-message");
+      } catch (e) {
+        loadingEl.innerHTML = `<div>❌ Lỗi khi gọi AI Chat: ${e.message}</div>`;
+        console.error("Chat API error:", e);
+      }
+    }
+
+    function appendMessage(html, className, isLoading = false) {
+      const msgWrapper = document.createElement("div");
+      msgWrapper.className = className;
+
+      if (isLoading) {
+        msgWrapper.innerHTML = `<div class="italic opacity-70">${html}</div>`;
+      } else {
+        const proseClass = ""; 
+        msgWrapper.innerHTML = `<div class="${proseClass}">${html.replace(/\n/g, '<br>')}</div>`;
+      }
+
+      chatMessages.appendChild(msgWrapper);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return msgWrapper;
+    }
+
+    // =============================
+    // 🚀 KHỞI TẠO VÀ GẮN SỰ KIỆN
+    // =============================
+
+    // Gắn hàm vào global scope để HTML <button> có thể gọi
+    window.rescue_captureFromCamera = rescue_captureFromCamera;
+    window.rescue_uploadImage = rescue_uploadImage; 
+    window.rescue_showFirstAidList = rescue_showFirstAidList; 
+
+    // Sự kiện chat
+    sendButton.addEventListener("click", () => rescue_sendChatMessage());
+    chatInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        rescue_sendChatMessage();
+      }
+    });
+
+    // Sự kiện cho file input
+    document.getElementById('rescue-file-input').addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        rescue_handleFileProcessing(file);
+        event.target.value = null;
+    });
+
+    // Sự kiện cho các nút trong timeline popup
+    document.getElementById('rescue-timeline-close').addEventListener('click', () => {
+      document.getElementById('rescue-timeline-modal').style.display = 'none';
+      rescueCurrentGuideKey = null; 
+    });
+
+    document.getElementById('rescue-timeline-back').addEventListener('click', () => {
+      if (rescueCurrentStep > 0) {
+        rescueCurrentStep--;
+        rescue_updateTimelineContent();
+      }
+    });
+
+    document.getElementById('rescue-timeline-next').addEventListener('click', () => {
+      if (!rescueCurrentGuideKey) return;
+      const guide = firstAidGuides.get(rescueCurrentGuideKey);
+      if (rescueCurrentStep < guide.steps.length - 1) {
+        rescueCurrentStep++;
+        rescue_updateTimelineContent();
+      }
+    });
+
+    document.getElementById('rescue-timeline-end').addEventListener('click', () => {
+      document.getElementById('rescue-timeline-modal').style.display = 'none';
+      rescueCurrentGuideKey = null; 
+    });
+    
+    // (*** MỚI ***) GẮN SỰ KIỆN CHO NÚT TÌM DỤNG CỤ
+    document.getElementById('rescue-timeline-tools-btn').addEventListener('click', rescue_findNearbyTools);
+    // (*** KẾT THÚC MỚI ***)
+
+
+    console.log("AI Rescue script initialized (v8 - Fixed POST & SessionStorage).");
+})(); // Kết thúc IIFE
+</script>

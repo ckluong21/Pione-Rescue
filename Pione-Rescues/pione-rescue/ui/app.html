@@ -1,0 +1,2059 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full bg-gray-100">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pione Rescue Dashboard (Demo)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- THÊM LẠI GOOGLE MAPS API -->
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCVD0ef9f2TL5s2jV51sR0ceprOu4ItxT8&callback=mapsApiLoaded&libraries=routes&v=weekly"
+        async defer></script>
+
+
+    <!-- THÊM THƯ VIỆN THREE.JS (Cho 3D) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Thêm TWEEN.js cho hiệu ứng chuyển động mượt mà -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+
+    <style>
+        /* Base styles */
+        :root {
+            --sidebar-width: 16rem;
+            --sidebar-width-mobile: 4rem;
+        }
+
+        /* Scrollbar styles */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #a8a8a8;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+
+        /* Animations */
+        @keyframes pulse-red {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+
+            50% {
+                box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+            }
+        }
+
+        @keyframes pulse-yellow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7);
+            }
+
+            50% {
+                box-shadow: 0 0 0 12px rgba(234, 179, 8, 0);
+            }
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Utility classes */
+        .alarm-active-red {
+            animation: pulse-red 1.5s infinite;
+            border-color: #ef4444 !important;
+            background-color: #fef2f2;
+        }
+
+        .alarm-active-yellow {
+            animation: pulse-yellow 1.5s infinite;
+            border-color: #eab308 !important;
+            background-color: #fefce8;
+        }
+
+        .sim-on {
+            background-color: #22c55e;
+            color: white;
+        }
+
+        .sim-on:hover {
+            background-color: #16a34a;
+        }
+
+        .sim-off {
+            background-color: #6b7280;
+            color: #d1d5db;
+            opacity: 0.7;
+        }
+
+        .sim-off:hover {
+            background-color: #4b5563;
+            opacity: 1;
+        }
+
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            width: 1rem;
+            height: 1rem;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        /* Layout & Navigation */
+        .flex.h-screen {
+            min-height: 100vh;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        nav.flex {
+            min-height: 100vh;
+            width: var(--sidebar-width);
+            flex-shrink: 0;
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 50;
+        }
+
+        main {
+            margin-left: var(--sidebar-width);
+            width: calc(100% - var(--sidebar-width));
+            min-height: 100vh;
+            flex: 1;
+        }
+
+        @media (max-width: 768px) {
+            nav.flex {
+                width: var(--sidebar-width-mobile) !important;
+            }
+
+            main {
+                margin-left: var(--sidebar-width-mobile);
+                width: calc(100% - var(--sidebar-width-mobile));
+            }
+
+            nav h1,
+            nav span,
+            nav button span {
+                display: none;
+            }
+
+            nav .nav-link {
+                padding: 1rem !important;
+                justify-content: center;
+            }
+
+            nav .nav-link i {
+                margin: 0 !important;
+            }
+
+            #broadcast-signal-btn {
+                padding: 1rem !important;
+            }
+
+            #broadcast-signal-btn span {
+                display: none;
+            }
+
+            .grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            #user-info {
+                padding: 0.5rem !important;
+            }
+        }
+
+        /* Ensure content area fills available space */
+        .page-content {
+            min-height: 100%;
+            width: 100%;
+        }
+
+        /* Prevent horizontal scrolling */
+        body {
+            overflow-x: hidden;
+        }
+
+        /* Map and Globe Containers */
+        #map {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-color: #111827;
+            overflow: hidden;
+        }
+
+        #globe-canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.5s ease-in-out;
+            opacity: 1;
+            z-index: 10;
+        }
+
+        #map-2d-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.5s ease-in-out;
+            opacity: 0;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        #globe-canvas-container.hidden,
+        #map-2d-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #map-2d-container.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #map canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Back to Globe Button */
+        #back-to-globe-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: opacity 0.5s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #back-to-globe-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #back-to-globe-btn:hover {
+            background-color: rgba(240, 240, 240, 0.9);
+        }
+
+        /* Heart Rate Chart */
+        #heart-rate-chart-path {
+            transition: d 0.5s linear;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+
+        /* Responsive Typography */
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 1.5rem !important;
+            }
+
+            h2 {
+                font-size: 1.25rem !important;
+            }
+
+            h3 {
+                font-size: 1.125rem !important;
+            }
+
+            .text-3xl {
+                font-size: 1.5rem !important;
+            }
+
+            .text-2xl {
+                font-size: 1.25rem !important;
+            }
+
+            .text-xl {
+                font-size: 1.125rem !important;
+            }
+
+            p,
+            .text-base {
+                font-size: 0.875rem !important;
+            }
+        }
+
+        /* Card Layouts */
+        @media (max-width: 1024px) {
+
+            .lg\:grid-cols-2,
+            .lg\:grid-cols-3 {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        /* Modal Responsiveness */
+        @media (max-width: 640px) {
+            .max-w-md {
+                width: 90% !important;
+                margin: 1rem !important;
+            }
+        }
+
+        /* Forms and Inputs */
+        @media (max-width: 640px) {
+
+            input,
+            textarea,
+            select {
+                font-size: 16px !important;
+                /* Prevents iOS zoom */
+            }
+        }
+
+        /* Tables */
+        @media (max-width: 768px) {
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+
+            td,
+            th {
+                min-width: 120px;
+            }
+        }
+    </style>
+    <style>
+    /* ================================================
+    🎨 GIAO DIỆN DARK MODE & NÂNG CẤP BỐ CỤC (V2 - ĐÃ SỬA LỖI)
+    ================================================
+    */
+
+    /* 1. Định nghĩa màu sắc cho Dark Mode */
+    :root {
+        --dark-bg: #111827;           /* Nền chính */
+        --dark-card: #1f2937;         /* Nền thẻ (card) */
+        --dark-card-inner: #374151;   /* Nền lồng bên trong thẻ */
+        --dark-border: #4b5563;       /* Viền, đường kẻ */
+        --dark-text-primary: #f9fafb; /* Chữ chính, tiêu đề */
+        --dark-text-secondary: #d1d5db;/* Chữ phụ */
+        --dark-text-muted: #9ca3af;   /* Chữ mờ, placeholder */
+    }
+
+    /* 2. CHỈ ÁP DỤNG SCROLLBAR TỐI CHO CÁC VÙNG SCROLL TRONG 3 TRANG */
+    /* Điều này sẽ không ảnh hưởng đến scrollbar gốc của trang chủ */
+    #page-events::-webkit-scrollbar-track,
+    #page-medical .flex-1.overflow-y-auto::-webkit-scrollbar-track,
+    #page-funds .flex-1.overflow-y-auto::-webkit-scrollbar-track {
+        background: var(--dark-bg);
+        border-radius: 10px;
+    }
+
+    #page-events::-webkit-scrollbar-thumb,
+    #page-medical .flex-1.overflow-y-auto::-webkit-scrollbar-thumb,
+    #page-funds .flex-1.overflow-y-auto::-webkit-scrollbar-thumb {
+        background: #4b5563;
+        border-radius: 10px;
+    }
+
+    #page-events::-webkit-scrollbar-thumb:hover,
+    #page-medical .flex-1.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+    #page-funds .flex-1.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+    }
+
+    /* ================================================
+    🎨 DARK MODE (CHỈ ÁP DỤNG CHO 3 TRANG)
+    ================================================ */
+
+    /* 3. Nền tối CHỈ CHO 3 TRANG CỤ THỂ */
+    #page-events,
+    #page-medical,
+    #page-funds {
+        background-color: var(--dark-bg);
+        color: var(--dark-text-primary);
+    }
+
+    /* 4. Tiêu đề & Text (chỉ trong 3 trang đó) */
+    #page-events h2, #page-events h3, #page-events h4,
+    #page-events .text-gray-800, #page-events .text-gray-700,
+    #page-medical h2, #page-medical h3, #page-medical h4,
+    #page-medical .text-gray-800, #page-medical .text-gray-700,
+    #page-funds h2, #page-funds h3, #page-funds h4,
+    #page-funds .text-gray-800, #page-funds .text-gray-700 {
+        color: var(--dark-text-primary);
+    }
+
+    #page-events .text-gray-600, #page-events .text-gray-500,
+    #page-medical .text-gray-600, #page-medical .text-gray-500,
+    #page-funds .text-gray-600, #page-funds .text-gray-500 {
+        color: var(--dark-text-muted);
+    }
+
+    /* 5. Thẻ (Card) & Nền (chỉ trong 3 trang đó) */
+    #page-events .bg-white, #page-events .bg-gray-50,
+    #page-medical .bg-white, #page-medical .bg-gray-50,
+    #page-funds .bg-white, #page-funds .bg-gray-50 {
+        background-color: var(--dark-card);
+        border-color: var(--dark-border) !important;
+    }
+
+    /* 6. Thẻ lồng nhau & chi tiết (chỉ trong 3 trang đó) */
+    #page-events .bg-gray-100,
+    #page-medical .bg-gray-100, /* Box Trạng thái */
+    #page-medical .space-y-3.bg-gray-50, /* Box Thông tin hồ sơ */
+    #page-medical .grid-cols-1.md\:grid-cols-2 .bg-gray-50, /* Box chỉ số (Hô hấp, Giấc ngủ...) */
+    #page-funds .bg-gray-100, /* Box QR */
+    #page-funds .bg-blue-50, /* Box Số dư */
+    #page-funds table thead.bg-gray-50 /* Header bảng */
+    {
+        background-color: var(--dark-card-inner);
+        border-color: var(--dark-border);
+    }
+    
+    /* 7. Xử lý text bên trong thẻ lồng nhau (chỉ trong 3 trang đó) */
+    #page-medical .bg-gray-50 .text-gray-700,
+    #page-medical .bg-gray-50 .text-gray-500,
+    #page-medical .bg-gray-100 .text-gray-600,
+    #page-medical .bg-gray-100 .text-gray-500,
+    #page-funds .bg-gray-100 .text-gray-500,
+    #page-funds table thead th {
+         color: var(--dark-text-secondary);
+    }
+
+    /* 8. Viền (Borders) (chỉ trong 3 trang đó) */
+    #page-events .border-b, #page-events .border,
+    #page-events .divide-y > :not([hidden]) ~ :not([hidden]),
+    #page-medical .border-b, #page-medical .border,
+    #page-medical .divide-y > :not([hidden]) ~ :not([hidden]),
+    #page-funds .border-b, #page-funds .border,
+    #page-funds .divide-y > :not([hidden]) ~ :not([hidden]),
+    #page-funds table.divide-y {
+        border-color: var(--dark-border) !important;
+    }
+
+    /* 9. Bảng (Table - Page Funds) */
+    #page-funds table tbody.bg-white {
+        background-color: var(--dark-card);
+    }
+    #page-funds table tbody tr:hover {
+        background-color: var(--dark-card-inner);
+    }
+
+    /* 10. Components đặc biệt (Chart, Modals) */
+    
+    /* Biểu đồ nhịp tim (Trang Medical) */
+    #page-medical #heart-rate-chart rect {
+        fill: var(--dark-card);
+    }
+    #page-medical div[style="font-size: 10px;"] {
+        color: var(--dark-text-muted);
+    }
+
+    /* Nút Refresh (Events, Funds) */
+    #page-events #refresh-events-btn,
+    #page-funds #refresh-balance-btn,
+    #page-funds #refresh-transactions-btn {
+         background-color: var(--dark-card);
+    }
+    #page-events #refresh-events-btn:hover,
+    #page-funds #refresh-balance-btn:hover,
+    #page-funds #refresh-transactions-btn:hover {
+         background-color: var(--dark-card-inner);
+    }
+    
+    /* Modal Thêm Log (vì liên quan trang Medical) */
+    #add-log-modal .bg-white {
+        background-color: var(--dark-card);
+    }
+    #add-log-modal h3,
+    #add-log-modal label {
+         color: var(--dark-text-primary);
+    }
+    #add-log-modal input,
+    #add-log-modal textarea {
+        background-color: var(--dark-card-inner);
+        border-color: var(--dark-border);
+        color: var(--dark-text-primary);
+    }
+    #add-log-modal input::placeholder,
+    #add-log-modal textarea::placeholder {
+         color: var(--dark-text-muted);
+    }
+
+    /* ================================================
+    📱 YÊU CẦU RESPONSIVE (GIỮ NGUYÊN TỪ TRƯỚC)
+    ================================================
+    */
+    @media (max-width: 768px) {
+
+        /* 1. Nút full-width trên mobile */
+        #login-btn {
+            width: 100%;
+        }
+        #rescue-modal .flex.justify-end,
+        #add-log-modal .flex.justify-end {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        #cancel-rescue-btn,
+        #confirm-rescue-btn,
+        #cancel-log-btn,
+        #save-log-btn {
+            width: 100%;
+            justify-content: center;
+        }
+        #add-log-btn {
+             width: 100%;
+             justify-content: center;
+             margin-top: 0.5rem;
+        }
+
+        /* 2. Cải thiện bố cục thẻ trên mobile */
+        #page-medical .lg\:grid-cols-2 {
+            grid-template-columns: 1fr !important;
+        }
+        .page-content {
+            /* padding: 1rem !important; */
+        }
+        .page-content h2 {
+            font-size: 1.5rem !important; /* 24px */
+        }
+    }
+</style>
+</head>
+
+<body class="h-full font-sans antialiased">
+
+    <!-- PHẦN LOGIN GIỮ NGUYÊN -->
+    <div id="page-login" class="flex h-screen w-screen items-center justify-center bg-gray-900">
+        <div class="bg-white p-8 rounded-lg shadow-xl text-center w-full max-w-md mx-4">
+            <div class="flex items-center justify-center mb-6"> <svg xmlns="http://www.w3.org/2000/svg"
+                    class="h-10 w-10 text-red-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                        d="M12 22a7 7 0 0 0 7-7c0-2-1-4.9-3.3-8.8C13.8 2.3 12.3 1 12 1s-1.8 1.3-3.7 5.2C6 10.1 5 13 5 15a7 7 0 0 0 7 7z" />
+                    <path d="M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                </svg>
+                <h1 class="text-3xl font-bold text-gray-800">Pione Rescue</h1>
+            </div>
+            <p class="text-gray-600 mb-6">Chế độ DEMO: Đăng nhập bằng CCCD, Ví và mã PIN.</p>
+            <div class="mb-4"> <input id="cccd-input" type="text"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center"
+                    placeholder="Nhập số CCCD (ví dụ: 0123456789)"> </div>
+            <div class="mb-4"> <input id="wallet-address-input" type="text"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center"
+                    placeholder="Nhập địa chỉ ví (ví dụ: 0x...)"> </div>
+            <div class="mb-4"> <input id="pin-input" type="password" inputmode="numeric" pattern="\d{6}" maxlength="6"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center tracking-widest"
+                    placeholder="Nhập 6 số PIN"> </div> <button id="login-btn"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition duration-200">
+                <i data-lucide="log-in" class="w-5 h-5 mr-2"></i> <span>Đăng nhập Demo</span> </button>
+        </div>
+    </div>
+
+    <!-- PHẦN ỨNG DỤNG CHÍNH GIỮ NGUYÊN -->
+    <div id="main-app" class="hidden">
+        <div class="flex h-screen bg-gray-100">
+            <!-- THANH ĐIỀU HƯỚNG BÊN TRÁI (GIỮ NGUYÊN) -->
+            <nav class="flex flex-col w-64 bg-gray-900 text-white shadow-lg">
+                <div class="flex items-center justify-center h-20 shadow-md"> <svg xmlns="http://www.w3.org/2000/svg"
+                        class="h-10 w-10 text-red-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M12 22a7 7 0 0 0 7-7c0-2-1-4.9-3.3-8.8C13.8 2.3 12.3 1 12 1s-1.8 1.3-3.7 5.2C6 10.1 5 13 5 15a7 7 0 0 0 7 7z" />
+                        <path d="M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                    </svg>
+                    <h1 class="text-2xl font-bold">Pione Rescue</h1>
+                </div>
+
+                <ul class="flex flex-col py-4">
+                    <li> <a href="#home"
+                            class="nav-link active-link flex items-center h-12 px-6 text-gray-300 hover:bg-gray-700 hover:text-white"
+                            data-page="page-home"> <i data-lucide="globe" class="w-5 h-5 mr-3"></i> <span>Trang chủ (Bản
+                                đồ)</span> </a> <!-- Đổi lại tên -->
+                    <li> <a href="#events"
+                            class="nav-link flex items-center h-12 px-6 text-gray-300 hover:bg-gray-700 hover:text-white"
+                            data-page="page-events"> <i data-lucide="shield-alert" class="w-5 h-5 mr-3"></i> <span>Quản
+                                lý Sự kiện</span> </a> </li>
+                    <li> <a href="#medical"
+                            class="nav-link flex items-center h-12 px-6 text-gray-300 hover:bg-gray-700 hover:text-white"
+                            data-page="page-medical"> <i data-lucide="heart-pulse" class="w-5 h-5 mr-3"></i> <span>Hồ sơ
+                                y tế</span> </a> </li>
+                    <li> <a href="#funds"
+                            class="nav-link flex items-center h-12 px-6 text-gray-300 hover:bg-gray-700 hover:text-white"
+                            data-page="page-funds"> <i data-lucide="piggy-bank" class="w-5 h-5 mr-3"></i> <span>Nạp
+                                quỹ</span> </a> </li>
+                    <li> <a href="#ai-care"
+                            class="nav-link flex items-center h-12 px-6 text-gray-300 hover:bg-gray-700 hover:text-white"
+                            data-page="page-ai-care"> <i data-lucide="brain-circuit" class="w-5 h-5 mr-3"></i> <span>AI
+                                Care</span> </a> </li>
+                    <li> <a href="#ai-3d"
+                            class="nav-link flex items-center h-12 px-6 text-gray-300 hover:bg-gray-700 hover:text-white"
+                            data-page="page-ai-3d"> <i data-lucide="scan" class="w-5 h-5 mr-3"></i> <span>AI 3D
+                                Scan</span> </a> </li>
+                    <li> <a href="#ai-rescue"
+                            class="nav-link flex items-center h-12 px-6 text-gray-300 hover:bg-gray-700 hover:text-white"
+                            data-page="page-ai-rescue"> <i data-lucide="scan" class="w-5 h-5 mr-3"></i> <span>Rescue
+                                Vision AI</span> </a> </li>
+                </ul>
+
+                <div id="user-info" class="p-4 border-t border-b border-gray-700 hidden"> <span
+                        class="text-xs text-gray-400">Đã đăng nhập (Demo):</span>
+                    <p id="user-cccd" class="text-sm font-medium break-all text-blue-300"></p>
+                    <p id="user-address" class="text-sm font-medium break-all text-green-400"></p> <button
+                        id="logout-btn"
+                        class="mt-2 w-full text-left text-red-400 hover:text-red-300 text-sm flex items-center"> <i
+                            data-lucide="log-out" class="w-4 h-4 mr-2"></i> <span>Đăng xuất</span> </button>
+                </div>
+                <div class="mt-auto p-6"> <button id="broadcast-signal-btn"
+                        class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition duration-200">
+                        <i data-lucide="siren" class="w-5 h-5 mr-2"></i> <span>Phát tín hiệu</span> </button> </div>
+            </nav>
+
+            <main class="flex-1 flex flex-col overflow-hidden">
+
+                <!-- PAGE-HOME: CHỨA DIV #MAP BAO QUANH CẢ 3D và 2D -->
+                <div id="page-home" class="page-content h-full relative">
+                    <!-- Container chung cho cả 3D và 2D -->
+                    <div id="map" class="w-full h-full cursor-grab active:cursor-grabbing">
+                        <!-- Container cho canvas 3D -->
+                        <div id="globe-canvas-container"></div>
+                        <!-- Container cho bản đồ 2D -->
+                        <div id="map-2d-container"></div>
+                        <!-- Nút Quay lại Địa cầu -->
+                        <button id="back-to-globe-btn" class="hidden">
+                            <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i> Quay lại Địa cầu
+                        </button>
+                    </div>
+
+                    <!-- Rescue Modal giữ nguyên -->
+                    <div id="rescue-modal"
+                        class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
+                            <h3 class="text-xl font-bold mb-4">Xác nhận cứu hộ?</h3>
+                            <p class="mb-6">Bạn có muốn nhận nhiệm vụ giải cứu cho sự kiện <b
+                                    id="rescue-modal-event-id">...</b> không?</p>
+                            <div class="flex justify-end space-x-3">
+                                <button id="cancel-rescue-btn"
+                                    class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400">Hủy</button>
+                                <button id="confirm-rescue-btn"
+                                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Xác
+                                    nhận</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CÁC TRANG KHÁC GIỮ NGUYÊN (EVENTS, MEDICAL, FUNDS, AI-CARE) -->
+                <div id="page-events" class="page-content h-full flex flex-col p-6 hidden overflow-y-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800">Quản lý Sự kiện Khẩn cấp</h2> <button
+                            id="refresh-events-btn" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50"
+                            title="Tải lại danh sách"> <i data-lucide="refresh-cw" class="w-5 h-5 text-blue-600"></i>
+                        </button>
+                    </div>
+                    <div class="mb-8">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b">🚨 Sự kiện tôi tạo (Bệnh
+                            nhân)</h3>
+                        <div id="my-created-events-list" class="space-y-4"></div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b">👨‍🚒 Nhiệm vụ cứu hộ của tôi
+                            (Người cứu hộ)</h3>
+                        <div id="my-assigned-events-list" class="space-y-4"></div>
+                    </div>
+                </div>
+
+                <div id="page-medical" class="page-content h-full flex flex-col p-6 hidden">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">Hồ sơ y tế & Giám sát sức khỏe</h2>
+                    <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
+
+                        <div class="flex flex-col bg-white rounded-lg shadow-lg overflow-hidden">
+                            <div class="flex justify-between items-center p-4 border-b">
+                                <h3 class="text-xl font-semibold text-gray-700">Lộ trình điều trị</h3>
+                                <button id="add-log-btn"
+                                    class="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg shadow-sm"
+                                    title="Thêm Lịch Sử Điều Trị">
+                                    <span>Cập nhật lộ trình</span>
+                                </button>
+                            </div>
+                            <div class="flex-1 overflow-y-auto">
+                                <div id="timeline-container" class="p-6 space-y-8">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col bg-white rounded-lg shadow-lg overflow-hidden">
+                            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                                <div>
+                                    <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Thông tin Hồ sơ Y
+                                        tế</h3>
+                                    <div class="space-y-3 bg-gray-50 p-4 rounded-md border">
+                                        <div class="border-b pb-2">
+                                            <label class="block text-sm font-medium text-gray-500">Họ và Tên</label>
+                                            <p id="profile-display-name" class="text-lg font-semibold text-gray-800">
+                                                Đang tải...</p>
+                                        </div>
+                                        <div class="border-b pb-2">
+                                            <label class="block text-sm font-medium text-gray-500">Tuổi</label>
+                                            <p id="profile-display-age" class="text-lg font-semibold text-gray-800">...
+                                            </p>
+                                        </div>
+                                        <div class="border-b pb-2">
+                                            <label class="block text-sm font-medium text-gray-500">Dị ứng</label>
+                                            <p id="profile-display-allergies" class="text-gray-700">...</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500">Tình trạng bệnh
+                                                lý</label>
+                                            <p id="profile-display-conditions" class="text-gray-700">...</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <div>
+                                    <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Chỉ số sức khỏe
+                                        (Thời gian thực)</h3>
+                                    <div id="status-box"
+                                        class="mb-6 p-4 rounded-lg bg-gray-100 border-2 border-gray-200 transition-all duration-300">
+                                        <span class="text-sm font-medium text-gray-600">Trạng thái:</span> <span
+                                            id="status-display" class="text-lg font-bold text-green-600">Tốt</span>
+                                        <div id="status-timer" class="text-sm text-gray-500 mt-1"></div>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div class="bg-white p-4 rounded-lg shadow-md border">
+                                            <h4 class="text-lg font-semibold mb-2 text-red-700">🫀 Tim mạch – Tuần hoàn
+                                            </h4>
+
+                                            <!-- Khu vực Biểu đồ (SVG) -->
+                                            <div class="w-full h-32 mb-4 relative">
+                                                <!-- Chú thích trục Y (CSS) -->
+                                                <div class="absolute top-0 left-0 h-full flex flex-col justify-between text-gray-500 py-1"
+                                                    style="font-size: 10px;">
+                                                    <span>120</span>
+                                                    <span>100</span>
+                                                    <span>80</span>
+                                                    <span>60</span>
+                                                </div>
+                                                <!-- SVG Chart -->
+                                                <svg id="heart-rate-chart" viewBox="0 0 100 50"
+                                                    class="w-full h-full pl-6" preserveAspectRatio="none">
+                                                    <!-- Vùng nền màu trắng -->
+                                                    <rect width="100" height="50" fill="#ffffff" />
+                                                    <!-- Đường dữ liệu (sẽ được cập nhật bằng JS) -->
+                                                    <path id="heart-rate-chart-path" d="M 0 25 Q 25 25, 50 25 T 100 25"
+                                                        stroke="#ef4444" stroke-width="1.5" fill="none" />
+                                                </svg>
+                                            </div>
+
+                                            <!-- Lưới chỉ số gọn gàng -->
+                                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                                <div class="flex items-center">
+                                                    <span class="text-xs text-gray-500 w-24">Nhịp tim</span>
+                                                    <span id="metric-heart_rate"
+                                                        class="font-medium text-red-500">--</span>
+                                                    <span class="text-xs text-gray-400 ml-1">BPM</span>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <span class="text-xs text-gray-500 w-24">Huyết áp</span>
+                                                    <span id="metric-bp" class="font-medium">--/--</span>
+                                                    <span class="text-xs text-gray-400 ml-1">mmHg</span>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <span class="text-xs text-gray-500 w-24">Biến thiên</span>
+                                                    <span id="metric-hrv" class="font-medium">--</span>
+                                                    <span class="text-xs text-gray-400 ml-1">ms</span>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <span class="text-xs text-gray-500 w-24">ECG</span>
+                                                    <span id="metric-ecg_status"
+                                                        class="text-xs font-medium text-gray-700">Bình thường</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                                            <h4 class="text-lg font-semibold mb-3 text-blue-700">🌬️ Hô hấp – Oxy hóa
+                                            </h4>
+                                            <div class="space-y-2">
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">SpO₂ (%)</span><span
+                                                        id="metric-spo2"
+                                                        class="text-lg font-bold text-blue-500">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5"><span
+                                                        class="text-sm text-gray-700">Tần số hô hấp</span><span
+                                                        id="metric-resp_rate"
+                                                        class="text-lg font-bold text-gray-800">...</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                                            <h4 class="text-lg font-semibold mb-3 text-purple-700">😴 Giấc ngủ & Căng
+                                                thẳng</h4>
+                                            <div class="space-y-2">
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">Chất lượng ngủ</span><span
+                                                        id="metric-sleep_quality"
+                                                        class="text-sm font-medium text-gray-800">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">Thời lượng ngủ</span><span
+                                                        id="metric-sleep_duration"
+                                                        class="text-lg font-bold text-gray-800">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">Căng thẳng (/100)</span><span
+                                                        id="metric-stress"
+                                                        class="text-lg font-bold text-purple-500">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5"><span
+                                                        class="text-sm text-gray-700">Chỉ số phục hồi</span><span
+                                                        id="metric-recovery"
+                                                        class="text-lg font-bold text-gray-800">...</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                                            <h4 class="text-lg font-semibold mb-3 text-green-700">🏃 Vận động & Năng
+                                                lượng</h4>
+                                            <div class="space-y-2">
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">Số bước</span><span
+                                                        id="metric-steps"
+                                                        class="text-lg font-bold text-green-600">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">Quãng đường (km)</span><span
+                                                        id="metric-distance"
+                                                        class="text-lg font-bold text-gray-800">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">Calo tiêu thụ</span><span
+                                                        id="metric-calories"
+                                                        class="text-lg font-bold text-gray-800">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5"><span
+                                                        class="text-sm text-gray-700">Phút hoạt động</span><span
+                                                        id="metric-activity_min"
+                                                        class="text-lg font-bold text-gray-800">...</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                                            <h4 class="text-lg font-semibold mb-3 text-orange-700">🌡️ Sinh lý khác</h4>
+                                            <div class="space-y-2">
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">Nhiệt độ da (°C)</span><span
+                                                        id="metric-temp"
+                                                        class="text-lg font-bold text-orange-500">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">Phát hiện rơi</span><span
+                                                        id="metric-fall_detection"
+                                                        class="text-sm font-medium text-gray-800">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">Cảnh báo AFib</span><span
+                                                        id="metric-afib_alert"
+                                                        class="text-sm font-medium text-gray-800">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5"><span
+                                                        class="text-sm text-gray-700">Theo dõi chu kỳ</span><span
+                                                        id="metric-cycle_tracking"
+                                                        class="text-sm font-medium text-gray-800">...</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                                            <h4 class="text-lg font-semibold mb-3 text-indigo-700">⚙️ Chuyên sâu</h4>
+                                            <div class="space-y-2">
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">VO₂ Max</span><span
+                                                        id="metric-vo2_max"
+                                                        class="text-lg font-bold text-indigo-500">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5 border-b"><span
+                                                        class="text-sm text-gray-700">Training Load</span><span
+                                                        id="metric-training_load"
+                                                        class="text-lg font-bold text-gray-800">...</span></div>
+                                                <div class="flex justify-between items-center py-1.5"><span
+                                                        class="text-sm text-gray-700">Phục hồi (HRR)</span><span
+                                                        id="metric-hrr"
+                                                        class="text-lg font-bold text-gray-800">...</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-funds" class="page-content h-full flex flex-col p-6 hidden overflow-hidden">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">Quản lý quỹ cứu hộ</h2>
+                    <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+                        <div class="lg:col-span-1 bg-white rounded-lg shadow-lg p-6 flex flex-col items-center">
+                            <h3 class="text-xl font-semibold text-gray-700 mb-4">Nạp quỹ (PZO)</h3>
+                            <p class="text-gray-500 text-center mb-2">Quét mã QR để nạp tiền vào quỹ của bạn.</p>
+                            <div class="p-4 bg-gray-100 rounded-lg"> <img src="image.jpg" alt="QR Code"
+                                    style="height: 400px; border-radius: 0.5rem; object-fit: contain;"> </div>
+                            <p class="text-sm text-gray-600 mt-4 text-center break-all"><b>Địa chỉ ví:</b>
+                                <span>0xfF142020E0BbB56Ff7cB9843Da9C0F571b36c94E</span></p>
+                            <div class="mt-6 w-full">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h4 class="font-semibold text-gray-700">Số dư hiện tại:</h4> <button
+                                        id="refresh-balance-btn" class="p-1 rounded hover:bg-gray-100"
+                                        title="Tải lại số dư"> <i data-lucide="refresh-cw"
+                                            class="w-4 h-4 text-blue-600"></i> </button>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg text-center"> <span id="fund-balance"
+                                        class="text-3xl font-bold text-blue-600">... PZO</span> </div>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-2 bg-white rounded-lg shadow-lg flex flex-col overflow-hidden">
+                            <div class="flex justify-between items-center p-6 border-b">
+                                <h3 class="text-xl font-semibold text-gray-700 ">Lịch sử giao dịch <span
+                                        class="text-sm font-normal text-gray-500">(Suy luận từ Sự kiện)</span></h3>
+                                <button id="refresh-transactions-btn" class="p-1 rounded hover:bg-gray-100"
+                                    title="Tải lại lịch sử"> <i data-lucide="refresh-cw"
+                                        class="w-4 h-4 text-blue-600"></i> </button>
+                            </div>
+                            <div class="flex-1 overflow-y-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                ID Sự kiện</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Loại</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Số tiền (PZO)</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Vai trò</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Trạng thái</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="funds-history-table" class="bg-white divide-y divide-gray-200"> </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="content-area" class="page-content h-full flex-1 hidden">
+                    <!-- Nội dung cho AI Care sẽ được load vào đây -->
+                </div>
+
+            </main>
+
+            <!-- Nút bật/tắt mô phỏng (Giữ nguyên) -->
+            <button id="simulation-toggle-btn"
+                class="fixed bottom-6 right-6 z-50 p-3 rounded-full shadow-lg transition-all duration-300" style="
+    bottom: 100px; "> <i data-lucide="power" class="w-6 h-6"></i> </button>
+
+        </div>
+
+        <!-- Modal Thêm Log (Giữ nguyên) -->
+        <div id="add-log-modal"
+            class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Thêm Lịch Sử Điều Trị</h3>
+                    <button id="cancel-log-btn-x" class="p-1 rounded-full hover:bg-gray-200">
+                        <i data-lucide="x" class="w-5 h-5 text-gray-600"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div> <label for="log-location" class="block text-sm font-medium text-gray-700 mb-1">Địa
+                            điểm</label> <input type="text" id="log-location"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="VD: Bệnh viện Trung Ương"> </div>
+                    <div> <label for="log-verifier" class="block text-sm font-medium text-gray-700 mb-1">Người xác
+                            nhận</label> <input type="text" id="log-verifier"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="VD: BS. Lê Văn B"> </div>
+                    <div> <label for="log-details" class="block text-sm font-medium text-gray-700 mb-1">Chi tiết</label>
+                        <textarea id="log-details" rows="3"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="VD: Tiêm Insulin 10ml, khám định kỳ"></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button id="cancel-log-btn"
+                        class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400">Hủy</button>
+                    <button id="save-log-btn"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"> <i
+                            data-lucide="save" class="w-5 h-5 mr-2"></i> Lưu </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===========================================
+        // --- CẤU HÌNH & BIẾN TOÀN CỤC ---
+        // ===========================================
+        const API_URL = 'http://localhost:3002';
+        const IOT_API_URL = 'http://localhost:3004/getIoT'; // (Thêm mới)
+
+        // BIẾN CHO 2D MAP
+        let map2D = null;
+        let infoWindow2D = null;
+        let map2DInitialized = false;
+        let markers2D = []; // Mảng quản lý marker 2D
+        const VIETNAM_CENTER = { lat: 16.0479, lng: 108.2209 };
+        const VIETNAM_ZOOM_LEVEL = 6;
+        // Thêm giới hạn địa lý cho VN (để lọc marker)
+        const VIETNAM_BOUNDS = {
+            north: 23.3933,
+            south: 8.1801,
+            west: 102.1444,
+            east: 109.4646,
+        };
+
+
+        // BIẾN CHO 3D GLOBE
+        let scene, camera, renderer, controls, earthMesh, cloudMesh;
+        let raycaster, mouse;
+        const emergencyMarkers3D = []; // Đổi tên để phân biệt với marker VN
+        const EARTH_RADIUS = 5;
+        const countryMarkers = []; // Mảng chứa các marker quốc gia (nút bấm)
+
+        // Biến trạng thái chung
+        let currentView = 'globe';
+        let activeEventMarker = null; // Marker cấp cứu đang được chọn (2D hoặc 3D)
+        let currentRescuingEventId = null;
+        let activeRescueCount = 0;
+        const MAX_RESCUES = 7;
+        let currentUserAddress = null;
+        let currentUserCccd = null;
+        let isSimulationOn = true;
+        let healthState = 'normal';
+        let stateTimer = 0;
+        const ALARM_DURATION = 10;
+        const SIMULATION_INTERVAL = 2000;
+        const ALARM_CHANCE_PER_MINUTE = 0.2;
+        const ALARM_CHANCE_PER_TICK = (ALARM_CHANCE_PER_MINUTE * SIMULATION_INTERVAL) / 60000;
+        let fakeSteps = 3450;
+        let fakeDistance = 2.5;
+        let fakeCalories = 150;
+        let fakeActivityMin = 25;
+
+        // ===========================================
+        // --- KHỞI TẠO & ĐIỀU HƯỚNG ---
+        // ===========================================
+        function mapsApiLoaded() {
+            console.log("Google Maps API đã tải.");
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) { lucide.createIcons(); } else { console.warn("Lucide icons not loaded."); }
+            document.getElementById('login-btn').addEventListener('click', demoLogin);
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            checkAutoLogin();
+        });
+
+        async function initializeApp() {
+            console.log("Khởi tạo ứng dụng...");
+            setupNavigation();
+            initGlobe(); // Khởi tạo Globe 3D trước
+            showGlobeView(); // Hiển thị Globe ban đầu
+            document.getElementById('back-to-globe-btn').addEventListener('click', showGlobeView);
+
+            // Gắn listeners nút chính... (giữ nguyên)
+            document.getElementById('broadcast-signal-btn').addEventListener('click', broadcastEmergencySignal);
+            document.getElementById('cancel-rescue-btn').addEventListener('click', () => { document.getElementById('rescue-modal').classList.add('hidden'); currentRescuingEventId = null; });
+            document.getElementById('confirm-rescue-btn').addEventListener('click', confirmRescue);
+            document.getElementById('simulation-toggle-btn').addEventListener('click', toggleSimulation); updateSimulationButton();
+            document.getElementById('refresh-events-btn').addEventListener('click', loadAndDisplayEvents);
+            document.getElementById('refresh-balance-btn').addEventListener('click', loadFundData);
+            document.getElementById('refresh-transactions-btn').addEventListener('click', loadTransactionHistory);
+            document.getElementById('add-log-btn').addEventListener('click', openAddLogModal);
+            document.getElementById('cancel-log-btn').addEventListener('click', closeAddLogModal);
+            document.getElementById('cancel-log-btn-x').addEventListener('click', closeAddLogModal);
+            document.getElementById('save-log-btn').addEventListener('click', saveTreatmentLog);
+
+            // Hiển thị trang home ban đầu và active link (giữ nguyên)
+            document.querySelectorAll('main > .page-content:not(#content-area)').forEach(p => p.classList.add('hidden'));
+            document.getElementById('content-area').classList.add('hidden');
+            document.getElementById('page-home').classList.remove('hidden');
+            document.querySelectorAll('.nav-link').forEach(nav => {
+                nav.classList.remove('active-link', 'bg-gray-700');
+                if (nav.getAttribute('data-page') === 'page-home') { nav.classList.add('active-link', 'bg-gray-700'); }
+            });
+
+            // Cập nhật ví (giữ nguyên)
+            const fundWalletAddressEl = document.getElementById('fund-wallet-address');
+            if (fundWalletAddressEl && currentUserAddress) { fundWalletAddressEl.textContent = currentUserAddress; }
+
+            // Tải dữ liệu ban đầu
+            // await loadExistingEvents(); // Không load marker cấp cứu lên globe nữa
+            await loadAndDisplayEvents(); // Load danh sách sự kiện (không load marker map)
+            await loadMedicalHistory();
+            await loadFundData();
+            await loadTransactionHistory();
+            startDataSimulation();
+        }
+
+        // --- Navigation (giữ nguyên logic ẩn/hiện view) ---
+        // --- Navigation (giữ nguyên logic ẩn/hiện view) ---
+        function setupNavigation() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const staticPages = document.querySelectorAll('main > .page-content:not(#content-area)');
+            const contentArea = document.getElementById('content-area');
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const pageId = link.getAttribute('data-page');
+                    navLinks.forEach(nav => nav.classList.remove('active-link', 'bg-gray-700'));
+                    link.classList.add('active-link', 'bg-gray-700');
+
+                    if (pageId !== 'page-home') {
+                        document.getElementById('globe-canvas-container')?.classList.add('hidden');
+                        document.getElementById('map-2d-container')?.classList.remove('visible'); // Đảm bảo dùng remove visible
+                        document.getElementById('back-to-globe-btn')?.classList.remove('visible');
+                    } else {
+                        if (currentView === 'globe') showGlobeView();
+                        else showMapView();
+                    }
+
+                    staticPages.forEach(page => page.classList.add('hidden'));
+                    contentArea.classList.add('hidden');
+                    contentArea.innerHTML = '';
+
+                    // START: LOGIC MỚI CHO AI_CARE VÀ AI_3D
+                    // if (pageId === 'page-ai-care' || pageId === 'page-ai-3d') {
+                    //     const fileName = pageId === 'page-ai-care' ? 'ai_care.html' : 'ai_3d.html';
+                    //                 console.log(`Loading ${fileName}...`);
+                    //     try {
+                    //     const response = await fetch(fileName);
+                    //                     if (response.status === 404) {
+                    //                         throw new Error(`File ${fileName} not found. Ensure it exists in the same directory.`);
+                    //                     }
+                    //     if (!response.ok) throw new Error(`Could not load ${fileName}`);
+                    //     const htmlContent = await response.text();
+                    //     contentArea.innerHTML = htmlContent;
+                    //     contentArea.classList.remove('hidden');
+
+                    //     // Thực thi script nhúng nếu có (thường là script#ai-care-script)
+                    //     const aiCareScriptElement = contentArea.querySelector('script#ai-care-script') || contentArea.querySelector('script#ai-3d-script');
+                    //     if (aiCareScriptElement) {
+                    //         const script = document.createElement('script'); 
+                    //                         script.textContent = aiCareScriptElement.textContent;
+                    //         document.body.appendChild(script).parentNode.removeChild(script); 
+                    //                         console.log(`Executed script for ${fileName}.`);
+                    //     } else { 
+                    //                         console.warn(`Could not find embedded script in ${fileName}`); 
+                    //                     }
+                    //     if (window.lucide) { lucide.createIcons(); }
+                    //     } catch (error) {
+                    //     console.error(`Error loading ${fileName}:`, error);
+                    //     contentArea.innerHTML = `<p class="p-6 text-red-500">Lỗi khi tải trang ${fileName}: ${error.message}</p>`; 
+                    //                     contentArea.classList.remove('hidden');
+                    //     }
+                    const pageFileMap = {
+                        'page-ai-care': 'ai_care.html',
+                        'page-ai-3d': 'ai_3d.html',
+                        'page-ai-rescue': 'ai_rescue.html' // <-- Thêm nav mới của bạn ở đây
+                    };
+
+                    // 2. Kiểm tra xem pageId có trong map không
+                    if (pageFileMap[pageId]) {
+                        const fileName = pageFileMap[pageId]; // Tự động lấy đúng file name
+                        console.log(`Loading ${fileName}...`);
+                        try {
+                            const response = await fetch(fileName);
+                            if (response.status === 404) {
+                                throw new Error(`File ${fileName} not found. Ensure it exists in the same directory.`);
+                            }
+                            if (!response.ok) throw new Error(`Could not load ${fileName}`);
+                            const htmlContent = await response.text();
+                            contentArea.innerHTML = htmlContent;
+                            contentArea.classList.remove('hidden');
+
+                            // 3. (Cải tiến) Tự động tìm ID script dựa trên pageId
+                            // Ví dụ: 'page-ai-rescue' -> 'ai-rescue-script'
+                            const scriptId = pageId.replace('page-', '') + '-script';
+
+                            const embeddedScript = contentArea.querySelector(`script#${scriptId}`);
+
+                            if (embeddedScript) {
+                                const script = document.createElement('script');
+                                script.textContent = embeddedScript.textContent;
+                                document.body.appendChild(script).parentNode.removeChild(script);
+                                console.log(`Executed script for ${fileName}.`);
+                            } else {
+                                // Cảnh báo nếu không tìm thấy script (dùng ID động)
+                                console.warn(`Could not find embedded script (id: #${scriptId}) in ${fileName}`);
+                            }
+
+                            if (window.lucide) {
+                                lucide.createIcons();
+                            }
+                        } catch (error) {
+                            console.error(`Error loading ${fileName}:`, error);
+                            contentArea.innerHTML = `<p class="p-6 text-red-500">Lỗi khi tải trang ${fileName}: ${error.message}</p>`;
+                            contentArea.classList.remove('hidden');
+                        }
+
+                        // END: LOGIC MỚI CHO AI_CARE VÀ AI_3D
+                    } else {
+                        const targetPage = document.getElementById(pageId);
+                        if (targetPage) {
+                            targetPage.classList.remove('hidden');
+                            if (pageId === 'page-events') { loadAndDisplayEvents(); }
+                            if (pageId === 'page-funds') { loadFundData(); loadTransactionHistory(); }
+                            if (pageId === 'page-medical') { loadMedicalHistory(); }
+                        } else {
+                            console.warn(`Static page not found: ${pageId}. Defaulting to home.`);
+                            document.getElementById('page-home').classList.remove('hidden');
+                            showGlobeView();
+                            document.querySelector('.nav-link[data-page="page-home"]').classList.add('active-link', 'bg-gray-700');
+                        }
+                    }
+                    if (window.lucide) { lucide.createIcons(); }
+                });
+            });
+        }
+
+        // ===========================================
+        // --- CHUYỂN ĐỔI GIỮA GLOBE VÀ MAP ---
+        // ===========================================
+        function showGlobeView() {
+            console.log("Switching to Globe view");
+            currentView = 'globe';
+            const globeContainer = document.getElementById('globe-canvas-container');
+            const mapContainer = document.getElementById('map-2d-container');
+            const backBtn = document.getElementById('back-to-globe-btn');
+
+            if (mapContainer) mapContainer.classList.remove('visible');
+            if (globeContainer) globeContainer.classList.remove('hidden'); // Ensure it becomes visible
+            if (backBtn) backBtn.classList.remove('visible');
+
+            if (controls) controls.enabled = true;
+
+            // Xóa marker 2D khi quay lại Globe
+            clearMarkers2D();
+
+            onWindowResize(); // Adjust size
+            // Reset camera position slightly further out
+            // animateCameraToTarget(new THREE.Vector3(0, 0, 15), 500); // Optional: animate camera back
+        }
+
+        function showMapView() {
+            console.log("Switching to 2D Map view (Vietnam)");
+            currentView = 'map2d';
+            const globeContainer = document.getElementById('globe-canvas-container');
+            const mapContainer = document.getElementById('map-2d-container');
+            const backBtn = document.getElementById('back-to-globe-btn');
+
+            if (globeContainer) globeContainer.classList.add('hidden');
+            if (mapContainer) mapContainer.classList.add('visible');
+            if (backBtn) backBtn.classList.add('visible');
+            if (controls) controls.enabled = false;
+
+            if (!map2DInitialized) {
+                initMap(); // Khởi tạo nếu chưa có
+                // Gọi load marker 2D sau khi map khởi tạo xong (có thể cần delay nhẹ)
+                setTimeout(loadAndDisplayMarkers2D, 100);
+            } else if (map2D) {
+                map2D.setCenter(VIETNAM_CENTER);
+                map2D.setZoom(VIETNAM_ZOOM_LEVEL);
+                google.maps.event.trigger(map2D, 'resize'); // Đảm bảo map resize đúng
+                loadAndDisplayMarkers2D(); // Load lại marker 2D
+            }
+        }
+        // ===========================================
+        // --- HÀM GỌI API HELPER (giữ nguyên) ---
+        // ===========================================
+
+        // Hàm gọi API IoT để lấy chỉ số sức khỏe thực tế
+        async function fetchIoTData() {
+            if (!currentUserAddress || !currentUserCccd) return null;
+            
+            try {
+                const response = await fetch(IOT_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        walletAddress: currentUserAddress,
+                        cccd: currentUserCccd
+                    })
+                });
+
+                if (!response.ok) {
+                    console.warn("IoT API Error:", response.statusText);
+                    return null;
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("Lỗi kết nối IoT:", error);
+                return null;
+            }
+        }
+
+
+        // Biến cờ để tránh gọi Emergency liên tục khi AI đang xử lý hoặc đã High
+        let isAiProcessing = false;
+
+        async function checkAndTriggerAI(iotData) {
+            // Nếu đang xử lý hoặc đang có sự kiện khẩn cấp active thì bỏ qua
+            console.log(`[DEBUG] isAiProcessing status: ${isAiProcessing}`);
+            if (isAiProcessing) return;
+
+            console.log("⚠️ Phát hiện bất thường, đang hỏi ý kiến AI...");
+            isAiProcessing = true;
+
+            try {
+                // Chuẩn bị dữ liệu gửi đi
+                const payload = {
+                    iotData: iotData,
+                    treatmentLogs: storedTreatmentLogs, // Lấy từ biến toàn cục đã lưu ở bước 1
+                    patientCccd: currentUserCccd
+                };
+
+                const response = await fetch('http://localhost:3004/aitriggerhelp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error("AI API Error");
+
+                // Nhận kết quả text: 'high' hoặc 'low'
+                const resultText = await response.text();
+                console.log(`AI Response: ${resultText}`);
+
+                if (resultText.trim().toLowerCase() === 'high') {
+                    console.warn("🚨 AI ĐÁNH GIÁ NGUY HIỂM CAO (HIGH) -> KÍCH HOẠT CỨU HỘ!");
+                    
+                    // Gọi hàm phát tín hiệu khẩn cấp (truyền tham số true để biết là tự động)
+                    await broadcastEmergencySignal(true);
+                } else {
+                    console.log("AI đánh giá rủi ro thấp (Low) -> Tiếp tục theo dõi.");
+                }
+
+            } catch (error) {
+                console.error("Lỗi khi gọi AI Trigger:", error);
+            } finally {
+                // Reset cờ sau 10s để tránh spam request nếu tình trạng vẫn xấu
+                setTimeout(() => { isAiProcessing = false; }, 10000);
+            }
+        }
+
+        async function fetchAllEventIds() { /* ... giữ nguyên ... */
+            try {
+                const response = await fetch(`${API_URL}/api/events/all-ids`);
+                if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+                const data = await response.json(); return data.eventIds;
+            } catch (error) { console.error("Lỗi khi tải danh sách ID sự kiện:", error); return []; }
+        }
+        async function createEmergencyEventOnBackend() { /* ... giữ nguyên ... */
+            if (!currentUserAddress || !currentUserCccd) { console.error("Không thể tạo sự kiện: thiếu thông tin người dùng."); return null; }
+            try {
+                const createResponse = await fetch(`${API_URL}/api/event/create`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ _patientAddress: currentUserAddress, _patientCccd: currentUserCccd, _rewardAmount: "0.00000005" })
+                });
+                if (!createResponse.ok) throw new Error(`API /api/event/create error: ${createResponse.statusText}`);
+                const createData = await createResponse.json(); console.log("Tạo sự kiện thành công, txHash:", createData.transactionHash);
+                const eventIds = await fetchAllEventIds(); if (eventIds.length > 0) { const newEventId = eventIds[eventIds.length - 1]; return newEventId; } return null;
+            } catch (error) { console.error("Lỗi khi tạo sự kiện khẩn cấp:", error); return null; }
+        }
+        // ===========================================
+        // --- GOOGLE MAPS 2D ---
+        // ===========================================
+        function initMap() { /* ... giữ nguyên ... */
+            console.log("Initializing 2D Google Map for Vietnam...");
+            try {
+                const mapDiv = document.getElementById("map-2d-container"); if (!mapDiv) { console.error("Không tìm thấy container #map-2d-container"); return; }
+                if (typeof google === 'undefined' || typeof google.maps === 'undefined') { console.error("Google Maps API chưa sẵn sàng."); setTimeout(initMap, 500); return; }
+                map2D = new google.maps.Map(mapDiv, { center: VIETNAM_CENTER, zoom: VIETNAM_ZOOM_LEVEL, mapId: 'PIONE_RESCUE_MAP_ID_2D', disableDefaultUI: true, zoomControl: true, mapTypeControl: false, streetViewControl: false, fullscreenControl: false });
+                infoWindow2D = new google.maps.InfoWindow(); map2DInitialized = true; console.log("Bản đồ 2D đã khởi tạo.");
+            } catch (error) { console.error("Lỗi khởi tạo Google Map 2D:", error); document.getElementById("map-2d-container").innerHTML = `<div class="p-6 bg-red-100 text-red-700">Không thể tải bản đồ 2D.</div>`; }
+        }
+
+        // --- BẮT ĐẦU THAY ĐỔI ---
+        function addEmergencyMarker2D(lat, lng, eventId) {
+            if (!map2D) return;
+            console.log(`(2D) Thêm tín hiệu ${eventId} tại [${lat}, ${lng}]`);
+            const position = { lat, lng };
+            const marker = new google.maps.Marker({
+                position: position,
+                map: map2D,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10, // GIỐNG index11
+                    fillColor: "#FF0000",
+                    fillOpacity: 1,
+                    strokeWeight: 2, // GIỐNG index11
+                    strokeColor: "#FFFFFF"
+                },
+                animation: google.maps.Animation.BOUNCE // <-- THÊM HIỆU ỨNG TỪ index11
+            });
+            marker.eventId = eventId;
+            marker.addListener('click', () => onMarkerClick2D(marker, position, eventId));
+            markers2D.push(marker); // Thêm vào mảng quản lý
+        }
+        function onMarkerClick2D(marker, position, eventId) {
+            if (!map2D || !infoWindow2D) return;
+            map2D.panTo(position);
+            map2D.setZoom(15);
+            const gmapsLink = `https://www.google.com/maps/search/?api=1&query=${position.lat},${position.lng}`;
+            const contentString = `<div class="p-2 w-48"><h4 class="font-bold">Sự kiện: ${eventId}</h4> <p>Phát hiện tín hiệu khẩn cấp!</p><button class="mt-2 w-full bg-red-600 text-white px-3 py-1 rounded-lg" onclick="promptRescue('${eventId}')">Nhận cứu hộ</button><a href="${gmapsLink}" target="_blank" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-center inline-block text-sm">Mở Google Maps</a></div>`;
+            infoWindow2D.setContent(contentString);
+            infoWindow2D.open(map2D, marker);
+            marker.setAnimation(null); // <-- THÊM DÒNG NÀY TỪ index11 (để dừng nháy)
+            activeEventMarker = marker;
+        }
+        // --- KẾT THÚC THAY ĐỔI ---
+
+        // Hàm xóa tất cả marker trên bản đồ 2D
+        function clearMarkers2D() {
+            markers2D.forEach(marker => marker.setMap(null));
+            markers2D = []; // Làm rỗng mảng
+        }
+
+        // Hàm tải và hiển thị marker cho bản đồ 2D
+        async function loadAndDisplayMarkers2D() {
+            if (!map2DInitialized || !map2D) {
+                console.log("Bản đồ 2D chưa sẵn sàng để load marker.");
+                return;
+            }
+            console.log("Đang tải marker cho bản đồ 2D...");
+            clearMarkers2D(); // Xóa marker cũ trước khi load
+
+            const eventIds = await fetchAllEventIds();
+            if (!eventIds || eventIds.length === 0) { console.log("Không có sự kiện nào để hiển thị trên 2D map."); return; }
+
+            for (const eventId of eventIds) {
+                try {
+                    const response = await fetch(`${API_URL}/api/event/${eventId}/status`);
+                    if (!response.ok) continue;
+                    const eventStatus = await response.json();
+                    // Chỉ hiển thị marker đang chờ hoặc đang cứu hộ
+                    if (eventStatus.status === "0" || eventStatus.status === "1") {
+                        // Tọa độ giả lập, CẦN THAY THẾ bằng tọa độ thật
+                        // const lat = 16.0479 + (Math.random() - 0.5) * 5; // Giả lập quanh VN
+                        // const lng = 108.2209 + (Math.random() - 0.5) * 5;
+                        const lat = 10.7769 + (Math.random() - 0.5) * 0.1;
+                        const lng = 106.7009 + (Math.random() - 0.5) * 0.1;
+                        // Kiểm tra nếu tọa độ nằm trong VN (để chỉ hiện marker VN)
+                        if (lat >= VIETNAM_BOUNDS.south && lat <= VIETNAM_BOUNDS.north &&
+                            lng >= VIETNAM_BOUNDS.west && lng <= VIETNAM_BOUNDS.east) {
+                            addEmergencyMarker2D(lat, lng, eventId);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Lỗi khi lấy status sự kiện ${eventId} cho map 2D:`, error);
+                }
+            }
+            console.log(`Đã tải ${markers2D.length} marker lên bản đồ 2D.`);
+        }
+
+
+        // ===========================================
+        // --- THREE.JS 3D GLOBE ---
+        // ===========================================
+        function initGlobe() { /* ... giữ nguyên phần khởi tạo scene, camera, renderer, controls, earth, cloud ... */
+            console.log("Khởi tạo quả địa cầu 3D...");
+            try {
+                const container = document.getElementById('globe-canvas-container'); if (!container) { console.error("Không tìm thấy container #globe-canvas-container"); return; }
+                while (container.firstChild) { container.removeChild(container.firstChild); } // Clear old canvas
+
+                scene = new THREE.Scene(); raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(container.clientWidth, container.clientHeight); renderer.setPixelRatio(window.devicePixelRatio); renderer.setClearColor(0x000000, 0); container.appendChild(renderer.domElement);
+                camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000); camera.position.z = 15;
+                scene.add(new THREE.AmbientLight(0xcccccc, 0.5)); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); directionalLight.position.set(5, 3, 5); scene.add(directionalLight);
+                controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.05; controls.minDistance = 6; controls.maxDistance = 30;
+
+                const earthGeometry = new THREE.SphereGeometry(EARTH_RADIUS, 64, 64);
+                const textureLoader = new THREE.TextureLoader();
+                const earthTexture = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'); const earthNormalMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_normal_2048.jpg'); const earthSpecMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg');
+                const earthMaterial = new THREE.MeshPhongMaterial({ map: earthTexture, normalMap: earthNormalMap, specularMap: earthSpecMap, specular: new THREE.Color('grey') });
+                earthMesh = new THREE.Mesh(earthGeometry, earthMaterial); scene.add(earthMesh);
+                const cloudGeometry = new THREE.SphereGeometry(EARTH_RADIUS + 0.03, 64, 64); const cloudTexture = textureLoader.load('https://threejs.org/examples/textures/planets/earth_clouds_2048.png');
+                const cloudMaterial = new THREE.MeshPhongMaterial({ map: cloudTexture, transparent: true, opacity: 0.8, depthWrite: false });
+                cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial); scene.add(cloudMesh);
+
+                // --- THÊM MARKER VIỆT NAM ---
+                addCountryMarker(VIETNAM_CENTER.lat, VIETNAM_CENTER.lng, 'Vietnam');
+
+                window.addEventListener('resize', onWindowResize);
+                renderer.domElement.addEventListener('click', onGlobeClick); // Listener click vào canvas
+                animate(); console.log("Quả địa cầu 3D đã khởi tạo.");
+            } catch (error) { console.error("Lỗi khởi tạo Three.js:", error); document.getElementById("globe-canvas-container").innerHTML = `<div class="p-6 bg-red-100 text-red-700">Không thể tải mô hình 3D.</div>`; }
+        }
+
+        // Hàm thêm marker quốc gia (nút bấm)
+        function addCountryMarker(lat, lng, countryName) {
+            if (!scene) return;
+            console.log(`Adding marker for ${countryName}`);
+            const markerGeometry = new THREE.SphereGeometry(0.1, 16, 16); // Lớn hơn marker cấp cứu
+            const markerMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ff00, // Màu xanh lá
+                transparent: true,
+                opacity: 0.9,
+                depthTest: false
+            });
+            const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
+
+            const position = latLngToVector3(lat, lng, EARTH_RADIUS + 0.1); // Nhô ra nhiều hơn
+            markerMesh.position.copy(position);
+            markerMesh.lookAt(earthMesh.position);
+
+            // Lưu thông tin quốc gia
+            markerMesh.userData = {
+                type: 'country_marker',
+                country: countryName,
+                targetLatLng: { lat, lng }
+            };
+
+            scene.add(markerMesh);
+            countryMarkers.push(markerMesh); // Thêm vào mảng quản lý riêng
+
+            // Thêm hiệu ứng pulse nhẹ cho nút quốc gia
+            const pulseGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+            const pulseMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.4, depthTest: false });
+            const pulseMesh = new THREE.Mesh(pulseGeometry, pulseMaterial);
+            markerMesh.add(pulseMesh);
+        }
+
+
+        function animate() { /* ... giữ nguyên logic update TWEEN, quay mây, controls, render ... */
+            TWEEN.update(); requestAnimationFrame(animate); if (cloudMesh) { cloudMesh.rotation.y += 0.0003; } if (controls && controls.enabled) { controls.update(); } if (renderer && scene && camera) { renderer.render(scene, camera); }
+        }
+
+        function vector3ToLatLng(vector, radius) { /* ... giữ nguyên ... */
+            const x = vector.x; const y = vector.y; const z = vector.z; const lat = 90 - (Math.acos(y / radius)) * 180 / Math.PI; const lng = ((180 + Math.atan2(-x, z) * 180 / Math.PI) % 360) - 180; return { lat, lng };
+        }
+
+        function onGlobeClick(event) {
+            if (currentView !== 'globe') return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            // 1. Ưu tiên kiểm tra click vào marker quốc gia
+            const countryIntersects = raycaster.intersectObjects(countryMarkers);
+            if (countryIntersects.length > 0) {
+                const intersectedCountryMarker = countryIntersects[0].object;
+                if (intersectedCountryMarker.userData && intersectedCountryMarker.userData.country === 'Vietnam') {
+                    console.log("Clicked Vietnam marker. Switching to 2D map...");
+                    const targetLatLng = intersectedCountryMarker.userData.targetLatLng;
+                    const targetPosition = latLngToVector3(targetLatLng.lat, targetLatLng.lng, EARTH_RADIUS + 1.5); // Vị trí camera gần hơn
+
+                    new TWEEN.Tween(camera.position)
+                        .to({ x: targetPosition.x, y: targetPosition.y, z: targetPosition.z }, 1000)
+                        .easing(TWEEN.Easing.Quadratic.InOut)
+                        .onUpdate(() => {
+                            // Giữ camera nhìn vào điểm mục tiêu trên bề mặt thay vì tâm
+                            const lookAtPos = latLngToVector3(targetLatLng.lat, targetLatLng.lng, EARTH_RADIUS);
+                            camera.lookAt(lookAtPos);
+                            controls.target.copy(lookAtPos); // Cập nhật cả target của controls
+                        })
+                        .onComplete(() => {
+                            showMapView(); // Chuyển view sau animation
+                        })
+                        .start();
+                    controls.enabled = false; // Tắt control khi đang animation
+                    return; // Đã xử lý, không cần kiểm tra tiếp
+                }
+            }
+
+
+            // 2. Kiểm tra click vào marker cấp cứu (nếu còn trên globe)
+            // const emergencyIntersects = raycaster.intersectObjects(emergencyMarkers3D);
+            // if (emergencyIntersects.length > 0) { ... logic cũ ... return; }
+
+            // 3. Nếu không click vào marker nào, có thể xử lý click vào bề mặt đất liền (tùy chọn)
+            // const globeIntersects = raycaster.intersectObject(earthMesh);
+            // if (globeIntersects.length > 0) { ... }
+        }
+
+        function onWindowResize() { /* ... giữ nguyên ... */
+            const globeContainer = document.getElementById('globe-canvas-container'); const mapContainer = document.getElementById('map-2d-container');
+            if (camera && renderer && globeContainer) { camera.aspect = globeContainer.clientWidth / globeContainer.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(globeContainer.clientWidth, globeContainer.clientHeight); }
+            if (map2D && google && google.maps) { google.maps.event.trigger(map2D, 'resize'); }
+        }
+        function latLngToVector3(lat, lng, radius) { /* ... giữ nguyên ... */
+            const phi = (90 - lat) * (Math.PI / 180); const theta = (lng + 180) * (Math.PI / 180); const x = -(radius * Math.sin(phi) * Math.cos(theta)); const z = (radius * Math.sin(phi) * Math.sin(theta)); const y = (radius * Math.cos(phi)); return new THREE.Vector3(x, y, z);
+        }
+
+        // ĐỔI TÊN HÀM: Giờ không thêm marker cấp cứu lên Globe nữa
+        // function addMarkerToGlobe(lat, lng, eventId) { ... }
+
+        // ===========================================
+        // --- CÁC HÀM CŨ ĐƯỢC CẬP NHẬT ---
+        // ===========================================
+        async function loadExistingEvents() {
+            // Hàm này không load marker lên map nữa, chỉ lấy dữ liệu nếu cần
+            console.log("Fetching existing event data (not adding markers yet)...");
+            // const eventIds = await fetchAllEventIds();
+            // ... có thể fetch và lưu trữ data sự kiện nếu cần truy cập nhanh ...
+            // Hiện tại để đơn giản, loadAndDisplayMarkers2D sẽ tự fetch lại
+        }
+
+        // Thêm tham số isAuto (mặc định là false nếu bấm nút)
+        async function broadcastEmergencySignal(isAuto = false) {
+            console.log(`Đang chuẩn bị gửi tín hiệu khẩn cấp... (Auto: ${isAuto})`);
+
+            if (!navigator.geolocation) {
+                if(!isAuto) alert("Trình duyệt không hỗ trợ GPS.");
+                return;
+            }
+
+            const btn = document.getElementById('broadcast-signal-btn');
+            const originalText = btn.innerHTML;
+            if (!isAuto) { // Chỉ đổi nút bấm nếu người dùng bấm tay
+                btn.innerHTML = `<div class="spinner"></div> Đang định vị...`;
+                btn.disabled = true;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    console.log(`Vị trí: ${lat}, ${lng}`);
+
+                    const newEventId = await createEmergencyEventOnBackend();
+                    
+                    if (newEventId) {
+                        const msg = `Đã gửi tín hiệu khẩn cấp tại [${lat}, ${lng}]`;
+                        console.log(msg);
+                        
+                        // Chỉ hiện alert nếu người dùng bấm tay, AI tự động thì chỉ notify console/UI
+                        if (!isAuto) alert(msg); 
+                        else {
+                            // Có thể thêm logic hiện Toast message ở đây nếu muốn
+                        }
+                        
+                        if (currentView === 'map2d' && map2D) {
+                            addEmergencyMarker2D(lat, lng, newEventId);
+                            map2D.panTo({ lat, lng });
+                            map2D.setZoom(15);
+                        }
+                        loadAndDisplayEvents();
+                    } else {
+                        if (!isAuto) alert("Gửi tín hiệu thất bại.");
+                    }
+
+                    if (!isAuto) {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                },
+                (error) => {
+                    console.error("Lỗi Geolocation:", error);
+                    if (!isAuto) {
+                        alert("Không thể lấy vị trí. Sẽ dùng tọa độ mặc định.");
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        window.promptRescue = (eventId) => { /* ... giữ nguyên logic tìm marker và mở modal ... */
+            if (!eventId) { console.error("promptRescue: no eventId"); return; }
+            // Tìm marker dựa trên view hiện tại
+            if (currentView === 'globe') {
+                // Hiện tại không có marker cấp cứu trên globe
+                // activeEventMarker = emergencyMarkers3D.find(m => m.userData.eventId === eventId);
+                console.warn("Attempted to rescue from globe view, markers are on 2D map.");
+                // Có thể chuyển sang map 2D trước khi mở modal? Hoặc báo lỗi.
+                // Tạm thời vẫn mở modal nhưng activeEventMarker sẽ null
+                activeEventMarker = null;
+            } else { // currentView === 'map2d'
+                activeEventMarker = markers2D.find(m => m.eventId === eventId);
+            }
+            if (!activeEventMarker && currentView === 'map2d') {
+                console.warn(`Could not find 2D marker for event ${eventId}`);
+            }
+
+            console.log(`Mở modal cứu hộ cho event: ${eventId}`);
+            currentRescuingEventId = eventId;
+            document.getElementById('rescue-modal-event-id').textContent = eventId;
+            document.getElementById('rescue-modal').classList.remove('hidden');
+        }
+
+
+        async function confirmRescue() { /* ... Giữ nguyên logic gọi API ... */
+            if (activeRescueCount >= MAX_RESCUES) { alert(`Đã đạt giới hạn ${MAX_RESCUES} nhiệm vụ.`); document.getElementById('rescue-modal').classList.add('hidden'); return; }
+            if (!currentRescuingEventId) { console.warn("confirmRescue: No currentRescuingEventId."); document.getElementById('rescue-modal').classList.add('hidden'); return; }
+            // activeEventMarker có thể null nếu prompt từ globe, hoặc nếu marker 2D không tìm thấy
+            // Chúng ta vẫn tiến hành gọi API, nhưng xử lý marker sẽ chỉ áp dụng nếu tìm thấy marker tương ứng
+            const markerToProcess = activeEventMarker;
+            const eventId = currentRescuingEventId;
+
+            try {
+                console.log(`Đang gán bản thân cho sự kiện: ${eventId}`);
+                const assignResponse = await fetch(`${API_URL}/api/event/assign`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ _eventId: parseInt(eventId), _rescuerAddress: currentUserAddress }) });
+                if (!assignResponse.ok) throw new Error(`API error: ${assignResponse.statusText}`);
+                const assignData = await assignResponse.json(); console.log("Gán thành công:", assignData.transactionHash); alert(`Đã xác nhận cứu hộ cho sự kiện ${eventId}!`); activeRescueCount++; console.log(`Nhiệm vụ hoạt động: ${activeRescueCount}`); document.getElementById('rescue-modal').classList.add('hidden');
+
+                // Xử lý marker CHỈ KHI NÓ TỒN TẠI và đúng view
+                if (markerToProcess) {
+                    if (currentView === 'map2d' && markerToProcess instanceof google.maps.Marker) {
+                        // Xử lý marker 2D (đổi màu, xóa sau timeout)
+                        markerToProcess.setIcon({ path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#9CA3AF", fillOpacity: 0.8, strokeWeight: 1, strokeColor: "#FFFFFF" });
+                        markerToProcess.setClickable(false); if (infoWindow2D) infoWindow2D.close();
+                        setTimeout(() => {
+                            markerToProcess.setMap(null); activeRescueCount--; console.log(`Nhiệm vụ ${eventId} (2D) hoàn tất. Hoạt động: ${activeRescueCount}`);
+                            const index = markers2D.indexOf(markerToProcess); if (index > -1) markers2D.splice(index, 1); // Xóa khỏi mảng quản lý
+                        }, 60000);
+                    }
+                    // else if (currentView === 'globe' && markerToProcess instanceof THREE.Mesh) {
+                    // Logic xử lý marker 3D (nếu có) - hiện tại không có marker cấp cứu 3D
+                    // }
+                } else {
+                    console.log(`Đã xác nhận sự kiện ${eventId}, nhưng không tìm thấy marker tương ứng trên view hiện tại.`);
+                    // Marker sẽ được cập nhật/không hiển thị khi load lại map 2D lần sau
+                }
+
+                currentRescuingEventId = null; activeEventMarker = null;
+                loadAndDisplayEvents(); // Cập nhật danh sách
+            } catch (error) { console.error("Lỗi khi nhận cứu hộ:", error); alert("Nhận cứu hộ thất bại."); document.getElementById('rescue-modal').classList.add('hidden'); currentRescuingEventId = null; activeEventMarker = null; }
+        }
+
+
+        // ===========================================
+        // --- HỒ SƠ Y TẾ & QUỸ (GIỮ NGUYÊN) ---
+        // ===========================================
+        // Thêm biến toàn cục lưu logs ở ngay trên hàm này hoặc đầu file
+        let storedTreatmentLogs = []; 
+
+        async function loadMedicalHistory() {
+            if (!currentUserCccd) return;
+            console.log(`Loading medical history for ${currentUserCccd}`);
+            const timelineContainer = document.getElementById('timeline-container');
+            timelineContainer.innerHTML = '<p>Loading...</p>';
+            
+            const nameDisplay = document.getElementById('profile-display-name');
+            const ageDisplay = document.getElementById('profile-display-age');
+            const allergiesDisplay = document.getElementById('profile-display-allergies');
+            const conditionsDisplay = document.getElementById('profile-display-conditions');
+
+            try {
+                const response = await fetch(`${API_URL}/api/profile/${currentUserCccd}`);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        console.warn(`Profile not found.`);
+                        timelineContainer.innerHTML = '<p>No history.</p>';
+                        nameDisplay.textContent = 'No info'; ageDisplay.textContent = 'N/A';
+                        allergiesDisplay.textContent = 'No info'; conditionsDisplay.textContent = 'No info';
+                        storedTreatmentLogs = []; // Reset log nếu không tìm thấy
+                        return;
+                    }
+                    throw new Error(`API error: ${response.statusText}`);
+                }
+                const data = await response.json();
+                
+                // --- LOGIC MỚI: Lưu logs vào biến toàn cục để dùng cho AI ---
+                storedTreatmentLogs = data.treatmentLogs || [];
+                // -----------------------------------------------------------
+
+                nameDisplay.textContent = data.profile.name || 'Not set';
+                ageDisplay.textContent = data.profile.age || 'N/A';
+                allergiesDisplay.textContent = data.profile.allergies || 'None';
+                conditionsDisplay.textContent = data.profile.conditions || 'None';
+
+                if (!data.treatmentLogs || data.treatmentLogs.length === 0) {
+                    timelineContainer.innerHTML = '<p>No treatment logs.</p>';
+                } else {
+                    renderMedicalTimeline(data.treatmentLogs);
+                }
+            } catch (error) {
+                console.error("Error loading medical history:", error);
+                timelineContainer.innerHTML = '<p class="text-red-500">Error loading history.</p>';
+            }
+        }
+        function renderMedicalTimeline(logs) { /* ... giữ nguyên ... */
+            const container = document.getElementById('timeline-container'); container.innerHTML = ''; if (logs.length === 0) { container.innerHTML = '<p>No history.</p>'; return; } const line = document.createElement('div'); line.className = 'absolute left-1/2 top-6 bottom-6 w-0.5 bg-red-200 transform -translate-x-1/2'; container.classList.add('relative'); container.appendChild(line); logs.forEach((log, index) => { const date = new Date(parseInt(log.timestamp) * 1000); const isLeft = index % 2 === 0; const item = document.createElement('div'); item.className = `relative w-full flex ${isLeft ? 'justify-start' : 'justify-end'}`; item.innerHTML = `<div class="w-1/2 ${isLeft ? 'pr-8' : 'pl-8'}"><div class="bg-white p-4 rounded-lg border-2 border-red-100 shadow-md"><span class="text-sm font-semibold text-red-600">${date.toLocaleDateString('vi-VN')} ${date.toLocaleTimeString('vi-VN')}</span><h4 class="font-bold text-gray-800">${log.location}</h4><p class="text-sm text-gray-600 mt-1">${log.details}</p><p class="text-xs text-gray-400 mt-2">Verifier: ${log.verifierName}</p></div></div><div class="absolute left-1/2 top-1/2 w-4 h-4 bg-red-500 rounded-full border-4 border-white transform -translate-x-1/2 -translate-y-1/2 z-10"></div>`; container.appendChild(item); });
+        }
+        async function loadFundData() { /* ... giữ nguyên ... */
+            console.log("Loading fund balance..."); try { const response = await fetch(`${API_URL}/api/fund/balance`); if (!response.ok) throw new Error(`API error: ${response.statusText}`); const data = await response.json(); document.getElementById('fund-balance').textContent = `${data.balanceEther} PZO`; } catch (error) { console.error("Error loading fund balance:", error); document.getElementById('fund-balance').textContent = `Error PZO`; }
+        }
+        async function loadTransactionHistory() { /* ... giữ nguyên ... */
+            if (!currentUserCccd || !currentUserAddress) return; console.log("Loading transaction history..."); const historyContainer = document.getElementById('funds-history-table'); historyContainer.innerHTML = `<tr><td colspan="5" class="text-center">Loading...</td></tr>`; const eventIds = await fetchAllEventIds(); if (eventIds.length === 0) { historyContainer.innerHTML = `<tr><td colspan="5" class="text-center">No transactions found.</td></tr>`; return; } let transactionsHtml = ''; let transactionCount = 0; for (const eventId of eventIds.reverse()) { try { const response = await fetch(`${API_URL}/api/event/${eventId}/status`); if (!response.ok) continue; const status = await response.json(); let amount = parseFloat(status.rewardAmount.replace(' PZO', '')); if (isNaN(amount)) amount = 0; let type = '', role = '', txStatus = '', amountText = '', amountColor = ''; const isPatient = status.patientCccd === currentUserCccd; const isRescuer = status.potentialRescuers.includes(currentUserAddress) || status.officialRescuerAddress === currentUserAddress; const isOfficialRescuer = status.officialRescuerAddress === currentUserAddress; if (!isPatient && !isRescuer) continue; transactionCount++; if (isPatient) { role = "Patient"; if (status.status === "3") { type = "Event Payment"; txStatus = "Paid"; amountText = `- ${amount.toFixed(8)}`; amountColor = "text-red-600"; } else if (status.status === "2") { type = "Event Pending"; txStatus = "Processing"; amountText = `- ${amount.toFixed(8)}`; amountColor = "text-yellow-600"; } else { type = "Event Created"; txStatus = "Pending"; amountText = `- ${amount.toFixed(8)}`; amountColor = "text-gray-500"; } } else if (isRescuer) { role = "Rescuer"; if (status.status === "3" && isOfficialRescuer) { type = "Rescue Reward"; txStatus = "Received"; amountText = `+ ${amount.toFixed(8)}`; amountColor = "text-green-600"; } else if (status.status === "2" && isOfficialRescuer) { type = "Reward Pending"; txStatus = "Processing"; amountText = `+ ${amount.toFixed(8)}`; amountColor = "text-blue-600"; } else { type = "Joined Rescue"; txStatus = "Pending Confirm"; amountText = `(+ ${amount.toFixed(8)})`; amountColor = "text-gray-500"; } } transactionsHtml += `<tr><td class="px-6 py-4">#${eventId}</td><td>${type}</td><td class="${amountColor}">${amountText}</td><td>${role}</td><td>${txStatus}</td></tr>`; } catch (error) { console.error(`Error processing event ${eventId} transaction:`, error); } } if (transactionCount === 0) { historyContainer.innerHTML = `<tr><td colspan="5" class="text-center">No relevant transactions found.</td></tr>`; } else { historyContainer.innerHTML = transactionsHtml; }
+        }
+
+        // ===========================================
+        // --- QUẢN LÝ SỰ KIỆN CỦA TÔI (GIỮ NGUYÊN) ---
+        // ===========================================
+        async function loadAndDisplayEvents() { /* ... giữ nguyên logic fetch và render HTML card ... */
+            if (!currentUserCccd || !currentUserAddress) return; console.log("Loading related events..."); const createdContainer = document.getElementById('my-created-events-list'); const assignedContainer = document.getElementById('my-assigned-events-list'); createdContainer.innerHTML = `<p>Loading...</p>`; assignedContainer.innerHTML = `<p>Loading...</p>`; const eventIds = await fetchAllEventIds(); if (eventIds.length === 0) { createdContainer.innerHTML = `<p>No events created.</p>`; assignedContainer.innerHTML = `<p>No rescue missions joined.</p>`; return; } let myCreatedEventsHtml = '', myAssignedEventsHtml = ''; let myCreatedEventCount = 0, myAssignedEventCount = 0; for (const eventId of eventIds.reverse()) { try { const response = await fetch(`${API_URL}/api/event/${eventId}/status`); if (!response.ok) continue; const eventStatus = await response.json(); if (eventStatus.patientCccd === currentUserCccd) { myCreatedEventCount++; myCreatedEventsHtml += renderMyCreatedEventCard(eventId, eventStatus); } const isPotentialRescuer = eventStatus.potentialRescuers.includes(currentUserAddress); const isOfficialRescuer = eventStatus.officialRescuerAddress === currentUserAddress; if (isPotentialRescuer || isOfficialRescuer) { myAssignedEventCount++; myAssignedEventsHtml += renderMyAssignedEventCard(eventId, eventStatus); } } catch (error) { console.error(`Error loading event ${eventId} status:`, error); } } createdContainer.innerHTML = myCreatedEventCount === 0 ? `<p>No events created.</p>` : myCreatedEventsHtml; assignedContainer.innerHTML = myAssignedEventCount === 0 ? `<p>No rescue missions joined.</p>` : myAssignedEventsHtml; if (window.lucide) { lucide.createIcons(); }
+        }
+        function renderMyCreatedEventCard(eventId, status) { /* ... giữ nguyên ... */
+            let statusText, statusColor, actionHtml; switch (status.status) { case "0": statusText = "Pending Rescuer"; statusColor = "bg-gray-100"; actionHtml = `<p>Waiting for acceptance...</p>`; break; case "1": statusText = "Rescuing"; statusColor = "bg-yellow-100 text-yellow-800"; actionHtml = `<h4>Candidates:</h4> <div class="space-y-2"> ${status.potentialRescuers.map(r => `<div class="flex justify-between items-center p-2 bg-gray-50 rounded"><code>${r.substring(0, 15)}...</code> <button class="px-3 py-1 bg-blue-600 text-white text-sm rounded" onclick="confirmRescuer('${eventId}', '${r}')">Confirm</button> </div>`).join('')}</div>`; break; case "2": statusText = "Pending Payment"; statusColor = "bg-blue-100 text-blue-800"; actionHtml = `<div><div class="spinner"></div> Processing payment... </div> <p>Confirmed: <code>${status.officialRescuerAddress}</code></p>`; break; case "3": statusText = "Completed"; statusColor = "bg-green-100 text-green-800"; actionHtml = `<p>Completed. Paid to <code>${status.officialRescuerAddress || 'N/A'}</code>.</p>`; break; default: statusText = "Unknown"; statusColor = "bg-gray-100"; actionHtml = ""; } return `<div class="bg-white p-4 rounded shadow"><div class="flex justify-between items-center mb-3"><h3>Event #${eventId}</h3><span class="px-2 rounded-full ${statusColor}">${statusText}</span></div><div class="border-t pt-3">${actionHtml}</div></div>`;
+        }
+        function renderMyAssignedEventCard(eventId, status) { /* ... giữ nguyên ... */
+            let statusText, statusColor, rewardInfo; const isOfficial = status.officialRescuerAddress === currentUserAddress; rewardInfo = `<p>Reward: <span>${status.rewardAmount}</span></p>`; switch (status.status) { case "0": case "1": if (isOfficial) { statusText = "Assigned"; statusColor = "bg-blue-100"; } else { statusText = "Applied (Pending)"; statusColor = "bg-yellow-100"; } break; case "2": if (isOfficial) { statusText = "Confirmed (Pending Pay)"; statusColor = "bg-blue-100"; } else { statusText = "Not Selected"; statusColor = "bg-gray-100"; rewardInfo = `<p>Another rescuer was selected.</p>`; } break; case "3": if (isOfficial) { statusText = "Completed (Paid)"; statusColor = "bg-green-100"; } else { statusText = "Ended"; statusColor = "bg-gray-100"; rewardInfo = `<p>Event completed by another rescuer.</p>`; } break; default: statusText = "Unknown"; statusColor = "bg-gray-100"; rewardInfo = ""; } const patientAddr = status.patientAddress ? `${status.patientAddress.substring(0, 10)}...` : 'N/A'; return `<div class="bg-white p-4 rounded shadow"><div class="flex justify-between items-center mb-3"><h3>Mission #${eventId}</h3><span class="px-2 rounded-full ${statusColor}">${statusText}</span></div> <p>Patient: <code>${patientAddr}</code></p> ${rewardInfo} </div>`;
+        }
+        async function confirmRescuer(eventId, rescuerAddress) { /* ... giữ nguyên ... */
+            console.log(`Confirming ${rescuerAddress} for event ${eventId}`); if (!confirm(`Confirm ${rescuerAddress.substring(0, 15)}...?`)) return; try { const response = await fetch(`${API_URL}/api/event/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ _eventId: parseInt(eventId), _confirmedRescuerAddress: rescuerAddress }) }); if (!response.ok) throw new Error(`API error: ${response.statusText}`); const data = await response.json(); console.log("Confirmation success:", data.transactionHash); alert("Rescuer confirmed! Payment processing..."); loadAndDisplayEvents(); setTimeout(() => { autoExecutePayment(eventId); }, 10000); } catch (error) { console.error("Error confirming rescuer:", error); alert("Confirmation failed."); loadAndDisplayEvents(); }
+        }
+        async function autoExecutePayment(eventId) { /* ... giữ nguyên ... */
+            console.log(`[AUTO] Executing payment for ${eventId}`); try { const response = await fetch(`${API_URL}/api/event/execute-payment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ _eventId: parseInt(eventId) }) }); if (!response.ok) throw new Error(`API error: ${response.statusText}`); const data = await response.json(); console.log("[AUTO] Payment success:", data.transactionHash); loadAndDisplayEvents(); loadFundData(); loadTransactionHistory(); } catch (error) { console.error("[AUTO] Payment failed:", error); loadAndDisplayEvents(); }
+        }
+
+        // ===========================================
+        // --- MÔ PHỎNG SỨC KHỎE (GIỮ NGUYÊN) ---
+        // ===========================================
+
+        // Hàm trợ giúp để vẽ biểu đồ SVG
+        function generateChartPath(data, minY = 50, maxY = 130, h = 50, w = 100) {
+            if (!data || data.length === 0) {
+                return "M 0 25 L 100 25"; // Đường phẳng mặc định
+            }
+            const range = maxY - minY;
+            const stepX = w / (data.length - 1);
+            let path = "M 0,";
+
+            // Kẹp giá trị (clamp) và ánh xạ sang tọa độ Y
+            let firstY = h - ((Math.max(minY, Math.min(maxY, data[0])) - minY) / range) * h;
+            path += firstY.toFixed(2);
+
+            for (let i = 1; i < data.length; i++) {
+                let x = i * stepX;
+                let y = h - ((Math.max(minY, Math.min(maxY, data[i])) - minY) / range) * h;
+                path += ` L ${x.toFixed(2)},${y.toFixed(2)}`;
+            }
+            return path;
+        }
+        // Thay thế hàm startDataSimulation cũ
+        function startDataSimulation() {
+            if (window.iotInterval) clearInterval(window.iotInterval);
+
+        window.iotInterval = setInterval(async () => {
+                if (!isSimulationOn) return; 
+
+                const realData = await fetchIoTData();
+
+                if (realData && realData.data) { // Bổ sung kiểm tra realData.data
+                    // ⭐️ BƯỚC 1: TRÍCH XUẤT DỮ LIỆU THỰC SỰ
+                    const data = realData.data;
+
+                    // 1. Logic xác định trạng thái cục bộ
+                    let isAbnormal = false;
+                    
+                    // 💡 THÊM LOG ĐỂ XÁC NHẬN DỮ LIỆU ĐANG ĐƯỢC ĐỌC
+                    console.log(`Kiểm tra Nhịp tim: ${data.heart_rate}`); 
+
+                    if (data.fall_detection && data.fall_detection !== "Normal") { // Sửa
+                        healthState = 'fall';
+                        isAbnormal = true;
+                    } else if (data.afib_alert && data.afib_alert !== "Normal") { // Sửa
+                        healthState = 'afib';
+                        isAbnormal = true;
+                    } else if (data.heart_rate > 120 || data.heart_rate < 45) { // Sửa
+                        // Thêm logic tự check nhịp tim quá cao/thấp
+                        
+                        // 💡 LOG XÁC NHẬN BẤT THƯỜNG
+                        console.warn("🚨 PHÁT HIỆN BẤT THƯỜNG: Heart Rate > 120");
+
+                        healthState = 'afib'; 
+                        isAbnormal = true;
+                    } else {
+                        healthState = 'normal';
+                    }
+
+                    // ... (Cập nhật UI)
+                    updateHealthStateUI(realData); 
+                    updateHealthDisplays(realData);
+
+                    // 2. --- LOGIC GỌI AI ---
+                    if (isAbnormal) {
+                        // Lúc này, isAbnormal = true, hàm checkAndTriggerAI sẽ được gọi.
+                        checkAndTriggerAI(realData);
+                    }
+                } else if (realData) {
+                    console.error("Lỗi: Dữ liệu IoT không có trường 'data'!");
+                }
+            }, 3000);
+        }
+        // Thay thế hàm updateHealthState cũ bằng hàm này
+        function updateHealthStateUI(data) {
+            const statusBox = document.getElementById('status-box');
+            const statusDisplay = document.getElementById('status-display');
+            const statusTimer = document.getElementById('status-timer');
+
+            // Xóa các class màu cũ
+            statusBox.classList.remove('alarm-active-red', 'alarm-active-yellow');
+
+            if (healthState === 'fall') {
+                // CẢNH BÁO RƠI
+                statusDisplay.textContent = 'PHÁT HIỆN NGÃ!';
+                statusDisplay.className = 'text-lg font-bold text-red-600';
+                statusBox.className = 'mb-6 p-4 rounded-lg border-2 transition-all duration-300 alarm-active-red';
+                statusTimer.textContent = 'Đang gửi tín hiệu khẩn cấp...';
+                
+                // Tự động gọi hàm tạo sự kiện cứu hộ nếu cần (có thể bỏ comment nếu muốn tự động gọi)
+                // simulateAlarmAPICall(); 
+
+            } else if (healthState === 'afib') {
+                // CẢNH BÁO RUNG NHĨ
+                statusDisplay.textContent = 'CẢNH BÁO TIM MẠCH!';
+                statusDisplay.className = 'text-lg font-bold text-yellow-600';
+                statusBox.className = 'mb-6 p-4 rounded-lg border-2 transition-all duration-300 alarm-active-yellow';
+                statusTimer.textContent = 'Nhịp tim không ổn định.';
+                
+            } else {
+                // BÌNH THƯỜNG
+                statusDisplay.textContent = 'Ổn định';
+                statusDisplay.className = 'text-lg font-bold text-green-600';
+                statusBox.className = 'mb-6 p-4 rounded-lg bg-gray-100 border-2 border-gray-200 transition-all duration-300';
+                statusTimer.textContent = `Cập nhật lần cuối: ${new Date().toLocaleTimeString()}`;
+            }
+        }
+        async function simulateAlarmAPICall() { /* ... giữ nguyên, nhưng không thêm marker 3D ... */ console.log("Health Alert: Broadcasting signal..."); const lat = VIETNAM_BOUNDS.south + Math.random() * (VIETNAM_BOUNDS.north - VIETNAM_BOUNDS.south); const lng = VIETNAM_BOUNDS.west + Math.random() * (VIETNAM_BOUNDS.east - VIETNAM_BOUNDS.west); const newEventId = await createEmergencyEventOnBackend(); if (newEventId) { console.log(`Health Alert: Event ${newEventId} created.`); if (currentView === 'map2d' && map2D) { addEmergencyMarker2D(lat, lng, newEventId); } loadAndDisplayEvents(); } else { console.error("Health Alert: Failed to broadcast signal."); } }
+        function generateFakeData() { /* ... giữ nguyên ... */ let d = {}; d.steps = fakeSteps += ~~(Math.random() * 5); if (Math.random() < .1) { d.steps += ~~(Math.random() * 50); fakeActivityMin += 1 } d.distance = (d.steps * .000762).toFixed(2); d.calories = (d.steps * .04).toFixed(0); d.activity_min = fakeActivityMin; d.sleep_quality = "Good (85%)"; d.sleep_duration = "7h 30m"; d.cycle_tracking = "Day 5, Follicular"; d.vo2_max = 42; d.training_load = 350; d.hrr = "30 bpm (Good)"; if (healthState === 'normal') { d.heart_rate = 65 + ~~(Math.random() * 10); d.hrv = 40 + ~~(Math.random() * 15); d.bp_systolic = 115 + ~~(Math.random() * 10); d.bp_diastolic = 75 + ~~(Math.random() * 5); d.ecg_status = "Normal Sinus Rhythm"; d.spo2 = 97 + ~~(Math.random() * 3); d.resp_rate = 14 + ~~(Math.random() * 4); d.stress = 20 + ~~(Math.random() * 15); d.recovery = 70 + ~~(Math.random() * 10); d.temp = (36.4 + Math.random() * .5).toFixed(1); d.fall_detection = "Normal"; d.afib_alert = "Normal"; } else if (healthState === 'fall') { d.heart_rate = 70 + ~~(Math.random() * 10); d.hrv = 35 + ~~(Math.random() * 10); d.bp_systolic = 120 + ~~(Math.random() * 10); d.bp_diastolic = 80 + ~~(Math.random() * 5); d.ecg_status = "Normal Sinus Rhythm"; d.spo2 = 98; d.resp_rate = 16; d.stress = 50 + ~~(Math.random() * 10); d.recovery = 60; d.temp = (36.5).toFixed(1); d.fall_detection = "Detected!"; d.afib_alert = "Normal"; } else { d.heart_rate = 90 + ~~(Math.random() * 50); d.hrv = 15 + ~~(Math.random() * 10); d.bp_systolic = 130 + ~~(Math.random() * 15); d.bp_diastolic = 85 + ~~(Math.random() * 5); d.ecg_status = "AFib Detected"; d.spo2 = 96 + ~~(Math.random() * 3); d.resp_rate = 18 + ~~(Math.random() * 4); d.stress = 70 + ~~(Math.random() * 15); d.recovery = 40; d.temp = (36.7 + Math.random() * .5).toFixed(1); d.fall_detection = "Normal"; d.afib_alert = "AFib Detected!"; } return d; }
+        function updateHealthDisplays(data) {
+            // --- Cập nhật Thẻ Tim Mạch ---
+            const hrEl = document.getElementById('metric-heart_rate');
+            if (hrEl) {
+                hrEl.textContent = data.heart_rate || '--';
+                // Cập nhật màu sắc dựa trên trạng thái
+                hrEl.className = `text-lg font-bold ${data.heart_rate > 100 || data.heart_rate < 50 ? 'text-red-500' : 'text-red-500'}`;
+            }
+
+            const hrvEl = document.getElementById('metric-hrv');
+            if (hrvEl) {
+                hrvEl.textContent = data.hrv || '--';
+                hrvEl.className = `text-lg font-bold text-gray-800`;
+            }
+
+            const bpEl = document.getElementById('metric-bp');
+            if (bpEl) {
+                bpEl.textContent = `${data.bp_systolic || '--'}/${data.bp_diastolic || '--'}`;
+                bpEl.className = `text-lg font-bold text-gray-800`;
+            }
+
+            const ecgEl = document.getElementById('metric-ecg_status');
+            if (ecgEl) {
+                ecgEl.textContent = data.ecg_status || '--';
+                // Cập nhật màu sắc dựa trên trạng thái
+                ecgEl.className = `text-md font-semibold ${healthState === 'afib' ? 'text-yellow-600' : 'text-gray-900'}`;
+            }
+
+            // Cập nhật biểu đồ
+            if (window.heartRateHistory === undefined) {
+                window.heartRateHistory = [];
+            }
+
+            if (data.heart_rate) {
+                window.heartRateHistory.push(data.heart_rate);
+                if (window.heartRateHistory.length > 20) { // Giữ 20 điểm dữ liệu
+                    window.heartRateHistory.shift();
+                }
+
+                const chartPath = document.getElementById('heart-rate-chart-path');
+                if (chartPath) {
+                    // Ánh xạ dải nhịp tim (ví dụ 50-130) vào chiều cao 50 của SVG
+                    chartPath.setAttribute('d', generateChartPath(window.heartRateHistory, 50, 130, 50, 100));
+                }
+            }
+
+            // --- Cập nhật các thẻ khác ---
+            if (data.spo2 !== undefined) document.getElementById('metric-spo2').textContent = `${data.spo2} %`;
+            if (data.resp_rate !== undefined) document.getElementById('metric-resp_rate').textContent = `${data.resp_rate}/min`;
+            if (data.sleep_quality !== undefined) document.getElementById('metric-sleep_quality').textContent = data.sleep_quality;
+            if (data.sleep_duration !== undefined) document.getElementById('metric-sleep_duration').textContent = data.sleep_duration;
+            if (data.stress !== undefined) document.getElementById('metric-stress').textContent = data.stress;
+            if (data.recovery !== undefined) document.getElementById('metric-recovery').textContent = `${data.recovery}%`;
+            if (data.steps !== undefined) document.getElementById('metric-steps').textContent = data.steps;
+            if (data.distance !== undefined) document.getElementById('metric-distance').textContent = `${data.distance} km`;
+            if (data.calories !== undefined) document.getElementById('metric-calories').textContent = `${data.calories} kcal`;
+            if (data.activity_min !== undefined) document.getElementById('metric-activity_min').textContent = `${data.activity_min} min`;
+            if (data.temp !== undefined) document.getElementById('metric-temp').textContent = `${data.temp} °C`;
+            if (data.fall_detection !== undefined) document.getElementById('metric-fall_detection').textContent = data.fall_detection;
+            if (data.afib_alert !== undefined) document.getElementById('metric-afib_alert').textContent = data.afib_alert;
+            if (data.cycle_tracking !== undefined) document.getElementById('metric-cycle_tracking').textContent = data.cycle_tracking;
+            if (data.vo2_max !== undefined) document.getElementById('metric-vo2_max').textContent = data.vo2_max;
+            if (data.training_load !== undefined) document.getElementById('metric-training_load').textContent = data.training_load;
+            if (data.hrr !== undefined) document.getElementById('metric-hrr').textContent = data.hrr;
+
+            // Cập nhật logic màu sắc cho các thẻ còn lại
+            if (data.spo2 !== undefined) document.getElementById('metric-spo2').className = `text-lg font-bold ${data.spo2 < 95 ? 'text-red-500' : 'text-blue-500'}`;
+            if (data.stress !== undefined) document.getElementById('metric-stress').className = `text-lg font-bold ${data.stress > 65 ? 'text-yellow-600' : 'text-purple-500'}`;
+            if (data.fall_detection !== undefined) document.getElementById('metric-fall_detection').className = `text-sm font-medium ${healthState === 'fall' ? 'text-red-600 font-bold' : 'text-gray-800'}`;
+            if (data.afib_alert !== undefined) document.getElementById('metric-afib_alert').className = `text-sm font-medium ${healthState === 'afib' ? 'text-yellow-600 font-bold' : 'text-gray-800'}`;
+        }
+
+        // ===========================================
+        // --- NÚT BẬT/TẮT (GIỮ NGUYÊN) ---
+        // ===========================================
+        function toggleSimulation() { /* ... giữ nguyên ... */ isSimulationOn = !isSimulationOn; console.log(`Simulation: ${isSimulationOn ? 'ON' : 'OFF'}`); updateSimulationButton(); if (!isSimulationOn) resetHealthStatus(); }
+        function updateSimulationButton() { /* ... giữ nguyên ... */ const btn = document.getElementById('simulation-toggle-btn'); if (isSimulationOn) { btn.classList.remove('sim-off'); btn.classList.add('sim-on'); btn.title = "Turn Off Simulation"; } else { btn.classList.remove('sim-on'); btn.classList.add('sim-off'); btn.title = "Turn On Simulation"; } }
+        function resetHealthStatus() { /* ... giữ nguyên ... */ const statusBox = document.getElementById('status-box'); const statusDisplay = document.getElementById('status-display'); const statusTimer = document.getElementById('status-timer'); healthState = 'normal'; stateTimer = 0; statusDisplay.textContent = 'Good'; statusDisplay.className = 'text-lg font-bold text-green-600'; statusBox.className = 'mb-6 p-4 rounded-lg bg-gray-100 border-2 border-gray-200 transition-all duration-300'; statusTimer.textContent = 'Simulation paused.'; document.getElementById('metric-fall_detection').textContent = "Normal"; document.getElementById('metric-afib_alert').textContent = "Normal"; document.getElementById('metric-fall_detection').className = 'text-sm font-medium text-gray-800'; document.getElementById('metric-afib_alert').className = 'text-sm font-medium text-gray-800'; }
+
+        // ===========================================
+        // --- LOGIN/LOGOUT (GIỮ NGUYÊN) ---
+        // ===========================================
+        async function onLoginSuccess(cccd, address) { /* ... giữ nguyên ... */ console.log(`Logged in: ${cccd}, ${address}`); currentUserAddress = address; currentUserCccd = cccd; localStorage.setItem('walletAddress', address); localStorage.setItem('cccd', cccd); let dAddr = address.length > 20 ? `${address.substring(0, 10)}...${address.substring(address.length - 8)}` : address; document.getElementById('user-cccd').textContent = `CCCD: ${currentUserCccd}`; document.getElementById('user-address').textContent = `Ví: ${dAddr}`; document.getElementById('user-info').classList.remove('hidden'); document.getElementById('page-login').classList.add('hidden'); document.getElementById('main-app').classList.remove('hidden'); if (window.lucide) { lucide.createIcons(); } await initializeApp(); }
+        async function checkAutoLogin() { /* ... giữ nguyên ... */ const sa = localStorage.getItem('walletAddress'); const sc = localStorage.getItem('cccd'); if (sa && sc) { await onLoginSuccess(sc, sa); } else { console.log("No saved login info."); } }
+        async function demoLogin() { /* ... giữ nguyên ... */ const cI = document.getElementById('cccd-input'); const aI = document.getElementById('wallet-address-input'); const pI = document.getElementById('pin-input'); const c = cI.value.trim(); const a = aI.value.trim(); const p = pI.value.trim(); if (!c) { alert("Enter CCCD."); return; } if (!a) { alert("Enter wallet address."); return; } if (!a.startsWith('0x') || a.length < 10) { alert("Invalid wallet address."); return; } if (!p) { alert("Enter PIN."); return; } if (!/^\d{6}$/.test(p)) { alert("PIN must be 6 digits."); return; } await onLoginSuccess(c, a); }
+        function logout() { /* ... giữ nguyên ... */ console.log("Logging out..."); localStorage.removeItem('walletAddress'); localStorage.removeItem('cccd'); currentUserAddress = null; currentUserCccd = null; location.reload(); }
+
+        // ===========================================
+        // --- MODAL THÊM LOG (GIỮ NGUYÊN) ---
+        // ===========================================
+        function openAddLogModal() { /* ... giữ nguyên ... */ document.getElementById('log-location').value = ''; document.getElementById('log-verifier').value = ''; document.getElementById('log-details').value = ''; document.getElementById('add-log-modal').classList.remove('hidden'); if (window.lucide) lucide.createIcons(); }
+        function closeAddLogModal() { /* ... giữ nguyên ... */ document.getElementById('add-log-modal').classList.add('hidden'); }
+        async function saveTreatmentLog() { /* ... giữ nguyên ... */ if (!currentUserCccd) { alert("User CCCD not found."); return; } const loc = document.getElementById('log-location').value.trim(); const ver = document.getElementById('log-verifier').value.trim(); const det = document.getElementById('log-details').value.trim(); if (!loc || !ver || !det) { alert("Please fill all fields."); return; } console.log("Saving treatment log..."); try { const res = await fetch(`${API_URL}/api/profile/add-log`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ _cccd: currentUserCccd, _location: loc, _verifierName: ver, _details: det }) }); if (!res.ok) { const err = await res.json().catch(() => null); throw new Error(err?.detail || res.statusText); } const data = await res.json(); console.log("Log saved:", data.transactionHash); alert("Log saved successfully!"); closeAddLogModal(); loadMedicalHistory(); } catch (err) { console.error("Error saving log:", err); alert(`Failed to save log: ${err.message}.`); } }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Khởi tạo trạng thái tắt cho nút mô phỏng
+            isSimulationOn = false;
+            const simBtn = document.getElementById('simulation-toggle-btn');
+            simBtn.classList.remove('sim-on');
+            simBtn.classList.add('sim-off');
+            updateSimulationButton();
+            resetHealthStatus();
+        });
+    </script>
+</body>
+
+</html>

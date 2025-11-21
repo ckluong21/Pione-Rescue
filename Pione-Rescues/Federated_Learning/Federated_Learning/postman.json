@@ -1,0 +1,329 @@
+{
+	"info": {
+		"_postman_id": "b5a6c8f1-2e3d-4f5a-9c1b-8e7d6f5a4b3c",
+		"name": "TPL Contract API Test",
+		"description": "Bộ collection để test 11 API của hệ thống TPLContract (VisionMateLedger). Server chạy mặc định tại port 3005.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "0. Thống kê (Counts)",
+			"item": [
+				{
+					"name": "Get All Counts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/counts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"counts"
+							]
+						},
+						"description": "Lấy số lượng phần tử hiện có trong 5 kho dữ liệu."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "1. Contribution (CID)",
+			"item": [
+				{
+					"name": "Add Contribution",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"cid\": \"QmXyZ123456789abcdefGlobalModelHash\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/contributions/add",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"contributions",
+								"add"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Contribution by Index",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/contributions/0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"contributions",
+								"0"
+							],
+							"query": [
+								{
+									"key": "index",
+									"value": "0",
+									"disabled": true,
+									"description": "Thay số 0 trên URL bằng index bạn muốn lấy"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. IoT Data",
+			"item": [
+				{
+					"name": "Add IoT Data",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"data\": \"Sensor: Temp 30C, Humidity 60% - Time: 12:00 PM\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/iot/add",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"iot",
+								"add"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get IoT Data by Index",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/iot/0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"iot",
+								"0"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Collection Data",
+			"item": [
+				{
+					"name": "Add Collection Data",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"data\": \"Collection Batch #102: Image set A, B, C processed.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/collection/add",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"collection",
+								"add"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Collection Data by Index",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/collection/0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"collection",
+								"0"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Backup Data",
+			"item": [
+				{
+					"name": "Add Backup Data",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"data\": \"Backup Log: System checkpoint restore point created.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/backup/add",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"backup",
+								"add"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Backup Data by Index",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/backup/0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"backup",
+								"0"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Primary Data",
+			"item": [
+				{
+					"name": "Add Primary Data",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"data\": \"Primary Core Data: Critical system update hash.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/primary/add",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"primary",
+								"add"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Primary Data by Index",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/primary/0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"primary",
+								"0"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3005",
+			"type": "string"
+		}
+	]
+}
